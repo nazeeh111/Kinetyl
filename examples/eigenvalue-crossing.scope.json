@@ -1,0 +1,64 @@
+{
+  "schema": "kinetyl-math-example/1",
+  "title": "A matrix through its eigenvalue crossing",
+  "matrix": "A(u) = diag(u, -u)",
+  "parameter": "u(t) = -2 + 2t/3, t in [0,6]",
+  "quantities": {
+    "lambda1": "λ₁(u)=u",
+    "lambda2": "λ₂(u)=-u",
+    "determinant": "det A(u)=-u²"
+  },
+  "source_keyframe_u": [
+    -2,
+    -1,
+    0,
+    1,
+    2
+  ],
+  "source_keyframe_t": [
+    "0",
+    "3/2",
+    "3",
+    "9/2",
+    "6"
+  ],
+  "world_positions": "(u, quantity_value)",
+  "scope": "Eigenvalue center paths are exact affine functions. Determinant is evaluated exactly at the five keyframes and interpolated linearly between them. The determinant animation is a sampled polyline, not the continuous quadratic graph or a physical simulation. Labels/camera may change; source world positions and times are preserved.",
+  "variants": [
+    {
+      "variant": "eigenvalue-crossing",
+      "pixels": [
+        960,
+        540
+      ],
+      "camera_scale": "4/5",
+      "input_sha256": "dc04bdea53ae7759df1d7d92ac69b8a5e615bef1eb38a432e1b2617b2c501a63",
+      "glyph_commands": [
+        52,
+        61,
+        104
+      ],
+      "world_keys_unchanged": true,
+      "scene_sha256": "a5058b3803382efcd56a9e3a6f8280a8852f76453fe069f7452f2d420d0872bb",
+      "plan_sha256": "3a3dd496fb37b8caa64beb40767b72a99bd6cf8eb797bfc8e2b60d462bcb52e5"
+    },
+    {
+      "variant": "eigenvalue-crossing-portrait",
+      "pixels": [
+        540,
+        960
+      ],
+      "camera_scale": "3/5",
+      "input_sha256": "9d0c6d3214c94dc7f95c487cbbb60ee501320f156ba15904aabe7a4cdd8681e1",
+      "glyph_commands": [
+        52,
+        61,
+        104
+      ],
+      "world_keys_unchanged": true,
+      "scene_sha256": "c3fa70a7bdc6d98b45b25d9f3f7b8c01e12bdb569472f0310e4e0a2cd94f5385",
+      "plan_sha256": "16f879a34bb404ab7c45cbf67520f56581d084c1b02f638394279b25ad5eb621"
+    }
+  ],
+  "renderer": "ManimGX 0.1.1 by Academa; native font measurement only in this worker; no GPU execution"
+}

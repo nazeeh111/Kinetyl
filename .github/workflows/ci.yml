@@ -1,0 +1,29 @@
+name: Verify Kinetyl
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: '3.11'}
+          - {os: ubuntu-latest, python: '3.14'}
+          - {os: macos-latest, python: '3.14'}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python -m pip install --upgrade 'setuptools>=77' wheel
+      - run: python -m unittest discover -s tests
+        env:
+          PYTHONPATH: src
+      - run: node --test tests/*.test.mjs
+      - run: python -m pip wheel --no-deps --no-build-isolation . -w dist
+      - run: python -m pip install --no-deps dist/kinetyl-0.1.0-py3-none-any.whl
+      - run: python -I tests/installed_journey.py

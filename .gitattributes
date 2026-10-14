@@ -1,0 +1,10 @@
+# Generated data and published copies stay reviewable without hiding source code.
+examples/** linguist-generated=true
+src/kinetyl/examples/** linguist-generated=true
+docs/plan.json linguist-generated=true
+docs/scene.json linguist-generated=true
+docs/native/*.json linguist-generated=true
+docs/geometry.mjs linguist-generated=true
+docs/studio.mjs linguist-generated=true
+docs/studio.css linguist-generated=true
+docs/index.html linguist-generated=true
