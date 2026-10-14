@@ -1,0 +1,16 @@
+{
+  "schema": "kinetyl-intent/1",
+  "duration": "6",
+  "margin": "1/10",
+  "camera_scales": ["1", "4/5", "3/5", "2/5"],
+  "min_font_size": 36,
+  "export": {"width": 960, "height": 540, "frame_rate": 24, "frame_height": "8"},
+  "nodes": [
+    {"id": "Read", "text": "Read", "font_size": 36, "color": "#6CE5CF", "radius": "1/10",
+     "keyframes": [["0", "-2", "-1"], ["2", "0", "0"], ["4", "2", "1"], ["6", "-1", "1"]]},
+    {"id": "Plan", "text": "Plan", "font_size": 36, "color": "#FF85BD", "radius": "1/10",
+     "keyframes": [["0", "2", "-1"], ["2", "0", "0"], ["4", "-2", "1"], ["6", "1", "-1"]]},
+    {"id": "Build", "text": "Build", "font_size": 36, "color": "#F6D86B", "radius": "1/10",
+     "keyframes": [["0", "0", "2"], ["2", "0", "0"], ["4", "0", "-2"], ["6", "0", "1"]]}
+  ]
+}
