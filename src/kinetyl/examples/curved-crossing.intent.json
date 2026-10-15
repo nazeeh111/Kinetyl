@@ -1,0 +1,102 @@
+{
+  "schema": "kinetyl-intent/2",
+  "duration": "6",
+  "export": {
+    "width": 960,
+    "height": 540,
+    "frame_rate": 24,
+    "frame_height": "8"
+  },
+  "margin": "1/10",
+  "camera_scales": [
+    "1",
+    "4/5",
+    "3/5",
+    "2/5",
+    "1/4"
+  ],
+  "min_font_size": 24,
+  "nodes": [
+    {
+      "id": "alpha",
+      "text": "Alpha",
+      "color": "#78DCE8",
+      "font_size": 28,
+      "radius": "3/25",
+      "keyframes": [
+        [
+          0,
+          -2,
+          -1
+        ],
+        [
+          6,
+          2,
+          -1
+        ]
+      ],
+      "controls": [
+        [
+          -2,
+          2,
+          2,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "beta",
+      "text": "Beta",
+      "color": "#FFD866",
+      "font_size": 28,
+      "radius": "3/25",
+      "keyframes": [
+        [
+          0,
+          2,
+          -1
+        ],
+        [
+          6,
+          -2,
+          -1
+        ]
+      ],
+      "controls": [
+        [
+          2,
+          2,
+          -2,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "origin",
+      "text": "Origin",
+      "color": "#A9DC76",
+      "font_size": 28,
+      "radius": "3/25",
+      "keyframes": [
+        [
+          0,
+          0,
+          "-5/2"
+        ],
+        [
+          6,
+          0,
+          "-5/2"
+        ]
+      ],
+      "controls": [
+        [
+          0,
+          "-5/2",
+          0,
+          "-5/2"
+        ]
+      ]
+    }
+  ]
+}

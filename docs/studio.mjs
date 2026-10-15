@@ -49,24 +49,44 @@ export function number(value) {
   const sa = Math.max(0, magnitude.toString(2).length - 53), sb = Math.max(0, b.toString(2).length - 53);
   return (a < 0n ? -1 : 1) * Number(magnitude >> BigInt(sa)) / Number(b >> BigInt(sb)) * 2 ** (sa - sb);
 }
-export function pointAt(track, time) {
+export function pointAt(track, time, controls = null) {
   for (let i = 1; i < track.length; i++) {
     const a = track[i - 1].map(number), b = track[i].map(number);
     if (time <= b[0]) {
       const u = Math.max(0, Math.min(1, (time - a[0]) / (b[0] - a[0])));
+      if (controls) {
+        const c = controls[i - 1].map(number);
+        return [0, 1].map(k => {
+          let points = [a[k + 1], c[k], c[k + 2], b[k + 1]];
+          while (points.length > 1) points = points.slice(1).map((v, j) => (1-u)*points[j] + u*v);
+          return points[0];
+        });
+      }
       return [a[1] + u * (b[1] - a[1]), a[2] + u * (b[2] - a[2])];
     }
   }
   return track.at(-1).slice(1).map(number);
 }
+export function trajectoryPath(node, scale = 1) {
+  const first = node.keyframes[0];
+  const parts = [`M ${number(first[1])*scale} ${number(first[2])*scale}`];
+  node.keyframes.slice(1).forEach((frame, i) => {
+    if (node.controls) parts.push(`C ${node.controls[i].map(v => number(v)*scale).join(' ')} ${number(frame[1])*scale} ${number(frame[2])*scale}`);
+    else parts.push(`L ${number(frame[1])*scale} ${number(frame[2])*scale}`);
+  });
+  return parts.join(' ');
+}
+
 export function editedScene(scene, raw) {
   if (new TextEncoder().encode(raw).length > 262144) throw new Error('Path editor exceeds 256 KiB');
   const rows = parseDocument(raw, 262144);
   if (!Array.isArray(rows) || rows.length !== scene.nodes.length) throw new Error('Keep every object identity and its order');
   const next = structuredClone(scene);
   rows.forEach((row, i) => {
-    if (!row || Object.keys(row).length !== 2 || !Object.hasOwn(row, 'id') || !Object.hasOwn(row, 'keyframes') || row.id !== scene.nodes[i].id) throw new Error('Each row requires the original id and keyframes only');
+    const keys = scene.schema.endsWith('/2') ? ['id', 'keyframes', 'controls'] : ['id', 'keyframes'];
+    if (!row || Object.keys(row).length !== keys.length || keys.some(k => !Object.hasOwn(row, k)) || row.id !== scene.nodes[i].id) throw new Error('Keep the original id, keyframes and declared controls');
     next.nodes[i].keyframes = row.keyframes;
+    if (scene.schema.endsWith('/2')) next.nodes[i].controls = row.controls;
   });
   return normalizeScene(next);
 }
@@ -123,10 +143,10 @@ export function createStudio(doc, dependencies = {}) {
     for (let x = Math.ceil(-halfW / gridStep); x <= halfW / gridStep; x++) svg('line', {x1: x * gridStep, x2: x * gridStep, y1: -4, y2: 4, stroke: x ? '#19283b' : '#34475f', 'stroke-width': .012}, world);
     for (let y = -4; y <= 4; y++) svg('line', {x1: -halfW, x2: halfW, y1: y, y2: y, stroke: y ? '#19283b' : '#34475f', 'stroke-width': .012}, world);
     scene.nodes.forEach((node, i) => {
-      const [wx, wy] = pointAt(node.keyframes, time), x = wx * scale, y = wy * scale;
+      const [wx, wy] = pointAt(node.keyframes, time, node.controls), x = wx * scale, y = wy * scale;
       const hx = number(node.envelope.width) / 2, hy = number(node.envelope.height) / 2, r = number(node.radius);
       const offset = mode === 'before' ? [0, hy + r + number(scene.margin)] : [number(plan.layout.offsets[i].x), number(plan.layout.offsets[i].y)];
-      svg('polyline', {points: node.keyframes.map(k => `${number(k[1]) * scale},${number(k[2]) * scale}`).join(' '), fill: 'none', stroke: node.color, opacity: .25, 'stroke-width': .023, 'stroke-dasharray': '.06 .10'}, world);
+      svg('path', {d: trajectoryPath(node, scale), fill: 'none', stroke: node.color, opacity: .25, 'stroke-width': .023, 'stroke-dasharray': '.06 .10'}, world);
       svg('line', {x1: x, y1: y, x2: x + offset[0], y2: y + offset[1], stroke: node.color, opacity: .38, 'stroke-width': .014}, world);
       svg('rect', {x: x - r, y: y - r, width: 2 * r, height: 2 * r, fill: node.color}, world);
       const label = svg('g', {transform: `translate(${x + offset[0]},${y + offset[1]})`}, world);
@@ -156,7 +176,7 @@ export function createStudio(doc, dependencies = {}) {
     if (first) original = structuredClone(scene);
     baseline = inspect(scene);
     dirty = false; downloads(); notice(); stop();
-    el.paths.value = JSON.stringify(scene.nodes.map(n => ({id: n.id, keyframes: n.keyframes})), null, 2);
+    el.paths.value = JSON.stringify(scene.nodes.map(n => ({id: n.id, keyframes: n.keyframes, ...(n.controls ? {controls: n.controls} : {})})), null, 2);
     el.time.max = String(number(scene.duration)); el.time.value = '0'; el.aspect.value = aspectValue(scene);
     el.witness.disabled = !baseline.collisions.length;
     write('status-title', 'Full trajectory checked');
@@ -164,6 +184,8 @@ export function createStudio(doc, dependencies = {}) {
     write('status-detail', conflict ? `Before placement overlaps around ${number(conflict.time).toFixed(3)} s. Compiled label envelopes and marker squares remain separated throughout the declared motion.` : 'The exported layout passes every declared label, marker and viewport constraint across the full time interval.');
     write('edit-status', 'Current source paths are compiled. Native video requires a separate renderer check.');
     if (scene.nodes.some(n => !n.envelope.glyph_paths.length)) notice('Some labels have no native outline. Fallback text is illustrative; only the declared rectangles are checked.');
+    const sceneNote = doc.getElementById('scene-note');
+    if (sceneNote) sceneNote.textContent = scene.schema.endsWith('/2') ? 'Cubic paths preserve their control points and segment times. Switch Before / Compiled, then change the aspect ratio. Labels keep their measured size.' : 'Piecewise linear motion. World paths and event times stay fixed while label placement and camera scale change.';
     metrics(); draw();
   }
   async function compile(next, first = false) {
@@ -185,7 +207,7 @@ export function createStudio(doc, dependencies = {}) {
   async function loadDocument(data) {
     const revision = ++epoch; dirty = true; downloads(); stop();
     try {
-      if (data?.schema === 'kinetyl-plan/1') {
+      if (['kinetyl-plan/1', 'kinetyl-plan/2'].includes(data?.schema)) {
         await verify(data);
         if (revision !== epoch) return false;
         accept(data, true); return true;

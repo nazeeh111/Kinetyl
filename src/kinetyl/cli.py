@@ -13,10 +13,10 @@ ASSETS=Path(__file__).with_name("assets")
 
 def parser():
     result=argparse.ArgumentParser(description="Keep labels readable throughout supported animation paths.")
-    result.add_argument("--version",action="version",version="0.1.0")
+    result.add_argument("--version",action="version",version="0.2.0")
     commands=result.add_subparsers(dest="command",required=True)
     sample=commands.add_parser("example",help="Write a bundled editable example to a new directory")
-    sample.add_argument("name",choices=["eigenvalue-crossing","three-streams"])
+    sample.add_argument("name",choices=["eigenvalue-crossing","three-streams","curved-crossing"])
     sample.add_argument("--portrait",action="store_true")
     sample.add_argument("--out",required=True,type=Path)
     for name,description in [("measure","Measure text with the optional native renderer"),
@@ -27,14 +27,14 @@ def parser():
         sub=commands.add_parser(name,help=description)
         sub.add_argument("input",type=Path)
         if name!="verify":sub.add_argument("--out",required=True,type=Path)
-        if name=="compile":sub.add_argument("--work-budget",type=int,default=50000)
+        if name=="compile":sub.add_argument("--work-budget",type=int,default=250000)
         if name=="render":sub.add_argument("--pixel-budget",type=int,default=400000000)
     return result
 
 
 def export(plan,out):
     verification=core.verify_plan(plan)
-    names=["index.html","studio.css","studio.mjs","geometry.mjs","README.txt","LICENSE.txt","NOTO-LICENSE.txt"]
+    names=["index.html","studio.css","studio.mjs","geometry.mjs","polynomial.mjs","README.txt","LICENSE.txt","NOTO-LICENSE.txt"]
     files={name:(ASSETS/name).read_bytes() for name in names}
     files.update({"plan.json":data(plan),"scene.json":data(plan["scene"]),"verification.json":data(verification)})
     raw=buffer.BytesIO()
