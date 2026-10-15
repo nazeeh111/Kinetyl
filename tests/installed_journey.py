@@ -25,3 +25,21 @@ with tempfile.TemporaryDirectory() as temp:
     assert main(['compile',str(example),'--out',str(root/'budget'),'--work-budget','1'])==2
     assert not (root/'budget').exists()
     print('Installed dependency-free compile/verify/export/hash/refusal journey PASS')
+
+with tempfile.TemporaryDirectory() as temp:
+    root=Path(temp)
+    for suffix in ([], ['--portrait']):
+        name='curved-crossing'+('-portrait' if suffix else '')
+        assert main(['example','curved-crossing',*suffix,'--out',str(root/name)])==0
+        assert main(['compile',str(root/name/(name+'.scene.json')),'--out',str(root/(name+'-compiled'))])==0
+        plan=json.loads((root/(name+'-compiled')/'plan.json').read_text())
+        assert plan['schema']=='kinetyl-plan/2'
+        assert main(['verify',str(root/(name+'-compiled')/'plan.json')])==0
+        assert main(['export',str(root/(name+'-compiled')/'plan.json'),'--out',str(root/(name+'-studio'))])==0
+        studio=root/(name+'-studio')
+        assert (studio/'polynomial.mjs').is_file()
+        with zipfile.ZipFile(studio/'portable.zip') as archive:
+            assert archive.testzip() is None
+            assert 'polynomial.mjs' in archive.namelist()
+        assert plan['scene']['nodes'][0]['controls']==[['-2','2','2','2']]
+    print('Installed cubic wide/portrait compile, independent verify and complete portable export PASS')

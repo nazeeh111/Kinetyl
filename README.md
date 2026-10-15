@@ -2,24 +2,24 @@
 
 **Compile moving diagrams that keep their meaning.**
 
-Labels collide between keyframes. Portrait crops erase important points. Kinetyl solves label placement and camera framing across the entire supported motion, while keeping your world paths, event times and projected label sizes fixed.
+Labels collide between keyframes. Portrait crops erase important points. Kinetyl solves label placement and camera framing across the entire supported straight or cubic motion, while keeping your world paths, event times and projected label sizes fixed.
 
 [Open the studio](https://nazeeh111.github.io/Kinetyl/) · [Download](https://github.com/nazeeh111/Kinetyl/releases) · [Scene format](SCHEMAS.md)
 
 ![Kinetyl motion studio](docs/images/studio.png)
 
-Actual native exports: [wide MP4](docs/native/wide.mp4) · [portrait MP4](docs/native/portrait.mp4), with [wide](docs/native/wide.json) and [portrait](docs/native/portrait.json) frame receipts.
+The default studio shows two cubic trajectories sharing an arch. Use **Before / Compiled**, **Jump to collision**, then switch to **9:16**. The curves and event times stay fixed while labels and camera framing adapt. [Try or author curved motion](docs/curved-motion.md). Actual exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
 
-The example follows the eigenvalues of `A(u) = diag(u, −u)`: two branches cross and the determinant follows five sampled values. Try **Jump to collision**, switch **Before / Compiled**, then change the canvas to **9:16**. The mathematical coordinates stay the same. The determinant is a piecewise linear approximation between its samples, not a continuous quadratic simulation.
+The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: two branches cross and the determinant follows five sampled values. Try **Jump to collision**, switch **Before / Compiled**, then change the canvas to **9:16**. The mathematical coordinates stay the same. The determinant is a piecewise linear approximation between its samples, not a continuous quadratic simulation. Its original [wide](docs/native/wide.mp4) and [portrait](docs/native/portrait.mp4) native exports remain available with their [wide](docs/native/wide.json) and [portrait](docs/native/portrait.json) receipts.
 
 ## Use it
 
 Python 3.11+. The compiler, verifier and exported browser studio need no runtime dependencies or paid service.
 
 ```sh
-python -m pip install /path/to/kinetyl-0.1.0-py3-none-any.whl
-kinetyl example eigenvalue-crossing --out examples
-kinetyl compile examples/eigenvalue-crossing.scene.json --out compiled
+python -m pip install /path/to/kinetyl-0.2.0-py3-none-any.whl
+kinetyl example curved-crossing --out examples
+kinetyl compile examples/curved-crossing.scene.json --out compiled
 kinetyl verify compiled/plan.json
 kinetyl export compiled/plan.json --out studio
 python -m http.server 8000 --directory studio
@@ -30,8 +30,8 @@ Open `http://localhost:8000`. Each output command requires a new destination and
 For your own text and an actual MP4, install the optional pinned renderer:
 
 ```sh
-python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.1.0-py3-none-any.whl'
-kinetyl measure examples/eigenvalue-crossing.intent.json --out measured
+python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.2.0-py3-none-any.whl'
+kinetyl measure examples/curved-crossing.intent.json --out measured
 kinetyl compile measured/scene.json --out planned
 kinetyl render planned/plan.json --out video
 ```
@@ -40,11 +40,11 @@ Native rendering uses **ManimGX 0.1.1**, Noto Sans and a supported graphics adap
 
 ## What it solves
 
-Kinetyl uses rational arithmetic to intersect continuous collision intervals on piecewise linear paths. It searches twelve constant label offsets per object, then selects the first feasible declared camera scale and the minimum summed slot cost. An independent verifier recomputes source identity, trajectories, candidate membership, all label pairs, all label–marker pairs and viewport constraints.
+Kinetyl uses rational arithmetic to check continuous collision constraints on piecewise linear and cubic Bézier paths. Cubic checks use bounded polynomial sign analysis rather than a frame grid. It searches twelve constant label offsets per object, then selects the first feasible declared camera scale and the minimum summed slot cost. An independent verifier recomputes source identity, trajectories, candidate membership, all label pairs, all label–marker pairs and viewport constraints.
 
-The supported model is explicit: 1–8 moving markers, fixed axis-aligned text envelopes, 2–16 keyframes per marker, a shared interval of at most 60 seconds, and a static 2D camera. Font size is a renderer parameter; fixed projected geometry does not guarantee a minimum readable screen pixel size. Rotating or morphing objects, arbitrary callbacks, perspective, custom easing and 3D are outside this format.
+The supported model is explicit: 1–8 moving markers, fixed axis-aligned text envelopes, 2–16 keyframes per marker, with explicit cubic controls in version 2, a shared interval of at most 60 seconds, and a static 2D camera. Font size is a renderer parameter; fixed projected geometry does not guarantee a minimum readable screen pixel size. Rotating or morphing objects, arbitrary callbacks, perspective, arbitrary easing and 3D are outside this format.
 
-**No solution** means no solution in the supplied scale/offset family. **Inconclusive** means the work budget ran out. Imported measurements and receipts are unsigned declarations. Exact rectangles do not certify continuous raster pixels, general accessibility or viewer comprehension.
+**No solution** means no solution in the supplied scale/offset family. **Inconclusive** means the work or arithmetic budget ran out. Imported measurements and receipts are unsigned declarations. Exact rectangles do not certify continuous raster pixels, general accessibility or viewer comprehension.
 
 ## Development and provenance
 

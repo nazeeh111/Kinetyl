@@ -5,12 +5,26 @@ import itertools
 import json
 import math
 import re
+from . import polynomial as poly
 
 MAX_GLYPH_COMMANDS = 8192
 MAX_TOTAL_GLYPH_COMMANDS = 32768
 MAX_GLYPH_CONTOURS = 512
 SCOPE = ("Exact declared rectangles; piecewise-linear centers; fixed presentation "
          "geometry; static axis-aligned camera; square clearance.")
+
+CUBIC_SCOPE = ("Exact declared rectangles; piecewise-cubic Bezier centers with linear segment time; "
+               "fixed presentation geometry; static axis-aligned camera; square clearance.")
+
+
+def _scope(scene):
+    return CUBIC_SCOPE if scene["schema"].endswith("/2") else SCOPE
+
+
+class _CurveTrack(list):
+    def __init__(self, frames, controls):
+        super().__init__(frames)
+        self.controls = controls
 
 
 class KinetylError(ValueError):
@@ -107,8 +121,10 @@ def _glyphs(data, width, height):
 
 def _validate(data, measured):
     _shape(data, ("schema", "duration", "nodes", "export", "margin", "camera_scales", "min_font_size"))
-    if data["schema"] != ("kinetyl-scene/1" if measured else "kinetyl-intent/1"):
+    prefix = "kinetyl-scene/" if measured else "kinetyl-intent/"
+    if data["schema"] not in (prefix + "1", prefix + "2"):
         raise InvalidScene("Unsupported scene schema")
+    version = data["schema"].rsplit("/", 1)[1]
     duration = _q(data["duration"], 60)
     if duration <= 0:
         raise InvalidScene("Duration must be positive")
@@ -128,7 +144,7 @@ def _validate(data, measured):
     nodes, identities, glyph_count = [], set(), 0
     for node in _array(data["nodes"], 1, 8):
         keys = ["id", "text", "font_size", "color", "radius", "keyframes"]
-        _shape(node, keys + (["envelope"] if measured else []))
+        _shape(node, keys + (["controls"] if version == "2" else []) + (["envelope"] if measured else []))
         identifier = _text(node["id"], 32)
         if re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,31}", identifier) is None or identifier in identities:
             raise InvalidScene("Node identities must be unique ASCII identifiers")
@@ -150,6 +166,9 @@ def _validate(data, measured):
             raise InvalidScene("Keyframes require shared 0..duration domain and strictly increasing times")
         item = {"id": identifier, "text": text, "font_size": font, "color": color.upper(),
                 "radius": str(radius), "keyframes": [[str(v) for v in k] for k in track]}
+        if version == "2":
+            controls = _array(node["controls"], len(track)-1, len(track)-1)
+            item["controls"] = [[str(_q(v)) for v in _array(row, 4, 4)] for row in controls]
         if measured:
             envelope = node["envelope"]
             _shape(envelope, ("width", "height", "measurement", "glyph_paths"))
@@ -164,7 +183,7 @@ def _validate(data, measured):
                 raise InvalidScene("Scene glyph command budget exceeded")
             item["envelope"] = {"width": str(width), "height": str(height), "measurement": metadata, "glyph_paths": paths}
         nodes.append(item)
-    return {"schema": "kinetyl-scene/1" if measured else "kinetyl-intent/1", "duration": str(duration),
+    return {"schema": prefix + version, "duration": str(duration),
             "nodes": nodes, "export": export, "margin": str(margin), "camera_scales": list(map(str, scales)), "min_font_size": min_font}
 
 
@@ -193,14 +212,51 @@ class _Budget:
 
 
 def _point(track, time):
-    for a, b in zip(track, track[1:]):
+    for i, (a, b) in enumerate(zip(track, track[1:])):
         if a[0] <= time <= b[0]:
             u = (time - a[0]) / (b[0] - a[0])
+            if hasattr(track, "controls"):
+                c = track.controls[i]
+                return tuple(poly.evaluate(poly.bezier_power((a[k+1], c[k], c[k+2], b[k+1])), u) for k in (0, 1))
             return a[1] + u * (b[1] - a[1]), a[2] + u * (b[2] - a[2])
     raise InvalidScene("Time outside trajectory domain")
 
 
+def _piece(track, start, end, axis):
+    """Power coefficients in local u over a shared subinterval."""
+    for i, (a, b) in enumerate(zip(track, track[1:])):
+        if a[0] <= start and end <= b[0]:
+            if hasattr(track, "controls"):
+                c = track.controls[i]
+                p = poly.bezier_power((a[axis+1], c[axis], c[axis+2], b[axis+1]))
+            else:
+                p = (a[axis+1], b[axis+1]-a[axis+1])
+            return poly.restrict(p, (start-a[0])/(b[0]-a[0]), (end-a[0])/(b[0]-a[0]))
+    raise InvalidScene("Invalid trajectory subinterval")
+
+
+def _curve_overlap(a, ha, oa, b, hb, ob, margin, budget):
+    cuts = sorted({k[0] for k in a} | {k[0] for k in b})
+    try:
+        for start, end in zip(cuts, cuts[1:]):
+            ps = []
+            for axis in (0, 1):
+                delta = poly.add(_piece(a, start, end, axis), [-c for c in _piece(b, start, end, axis)])
+                for direction in (-1, 1):
+                    p = [direction*c for c in delta]
+                    p[0] += direction*(oa[axis]-ob[axis]) - ha[axis]-hb[axis]-margin
+                    ps.append(p)
+            u = poly.negative_witness(ps, Fraction(0), Fraction(1), budget)
+            if u is not None:
+                return start + (end-start)*u
+    except poly.PolynomialLimit as exc:
+        raise SearchBudgetExceeded(str(exc)) from None
+    return None
+
+
 def _overlap(a, ha, oa, b, hb, ob, margin, budget):
+    if hasattr(a, "controls") or hasattr(b, "controls"):
+        return _curve_overlap(a, ha, oa, b, hb, ob, margin, budget)
     budget.spend()
     cuts = sorted({k[0] for k in a} | {k[0] for k in b})
     for start, end in zip(cuts, cuts[1:]):
@@ -238,6 +294,17 @@ def _overlap(a, ha, oa, b, hb, ob, margin, budget):
 
 
 def _inside(track, half, offset, viewport, budget):
+    if hasattr(track, "controls"):
+        try:
+            for a, b in zip(track, track[1:]):
+                for axis, direction in itertools.product((0, 1), (-1, 1)):
+                    p = [direction*c for c in _piece(track, a[0], b[0], axis)]
+                    p[0] += direction*offset[axis] + half[axis] - viewport[axis]
+                    if poly.negative_witness([[-c for c in p]], Fraction(0), Fraction(1), budget) is not None:
+                        return False
+            return True
+        except poly.PolynomialLimit as exc:
+            raise SearchBudgetExceeded(str(exc)) from None
     budget.spend(2 * len(track))
     return all(abs(p[axis + 1] + offset[axis]) + half[axis] <= viewport[axis] for p in track for axis in (0, 1))
 
@@ -250,6 +317,8 @@ def _slots(half, radius, gap):
 
 def _geometry(scene, scale):
     tracks = [[tuple(Fraction(v) if j == 0 else Fraction(v) * scale for j, v in enumerate(k)) for k in node["keyframes"]] for node in scene["nodes"]]
+    if scene["schema"].endswith("/2"):
+        tracks = [_CurveTrack(t, [tuple(Fraction(v)*scale for v in row) for row in n["controls"]]) for t, n in zip(tracks, scene["nodes"])]
     halves = [(Fraction(n["envelope"]["width"]) / 2, Fraction(n["envelope"]["height"]) / 2) for n in scene["nodes"]]
     radii = [Fraction(n["radius"]) for n in scene["nodes"]]
     viewport = (Fraction(4 * scene["export"]["width"], scene["export"]["height"]), Fraction(4))
@@ -262,15 +331,17 @@ def _checks(n):
 
 def _make_plan(scene, scale, offsets):
     tracks, _, _, viewport, _ = _geometry(scene, scale)
-    return {"schema": "kinetyl-plan/1", "scene": scene, "input_sha256": scene_identity(scene),
+    version = scene["schema"].rsplit("/", 1)[1]
+    return {"schema": "kinetyl-plan/" + version, "scene": scene, "input_sha256": scene_identity(scene),
             "layout": {"camera_scale": str(scale),
                        "offsets": [{"node_id": node["id"], "x": str(o[0]), "y": str(o[1])} for node, o in zip(scene["nodes"], offsets)],
-                       "projected_tracks": [{"node_id": n["id"], "keyframes": [[str(v) for v in k] for k in t]} for n, t in zip(scene["nodes"], tracks)],
+                       "projected_tracks": [{"node_id": n["id"], "keyframes": [[str(v) for v in k] for k in t],
+                                              **({"controls": [[str(v) for v in c] for c in t.controls]} if hasattr(t, "controls") else {})} for n, t in zip(scene["nodes"], tracks)],
                        "viewport": {"half_width": str(viewport[0]), "half_height": str(viewport[1])}},
-            "verification": {**_checks(len(scene["nodes"])), "scope": SCOPE}}
+            "verification": {**_checks(len(scene["nodes"])), "scope": _scope(scene)}}
 
 
-def compile_scene(scene, work_budget=50000):
+def compile_scene(scene, work_budget=250000):
     scene = validate_scene(scene)
     _integer(work_budget, 1, 1000000)
     budget, zero = _Budget(work_budget), (Fraction(0), Fraction(0))
@@ -330,9 +401,11 @@ def _verify_plan(plan, budget):
     """Recompute serialized evidence and every continuous declared constraint."""
     try:
         _shape(plan, ("schema", "scene", "input_sha256", "layout", "verification"))
-        if plan["schema"] != "kinetyl-plan/1":
+        if plan["schema"] not in ("kinetyl-plan/1", "kinetyl-plan/2"):
             raise InvalidScene("Unsupported plan schema")
         scene = validate_scene(plan["scene"])
+        if plan["schema"].rsplit("/", 1)[1] != scene["schema"].rsplit("/", 1)[1]:
+            raise InvalidScene("Plan and scene versions differ")
         # Require canonical scene bytes/values inside a plan: no ambiguous variants.
         if type(plan["input_sha256"]) is not str or plan["input_sha256"] != scene_identity(scene) or plan["scene"] != scene:
             raise InvalidScene("Plan scene identity or normalization mismatch")
@@ -348,9 +421,15 @@ def _verify_plan(plan, budget):
                 raise InvalidScene("Offset identity/order mismatch")
             offsets.append((_q(row["x"], 128, 1024, 1024), _q(row["y"], 128, 1024, 1024)))
         for node, row in zip(scene["nodes"], _array(layout["projected_tracks"], len(scene["nodes"]), len(scene["nodes"]))):
-            _shape(row, ("node_id", "keyframes"))
+            _shape(row, ("node_id", "keyframes", "controls") if scene["schema"].endswith("/2") else ("node_id", "keyframes"))
             if row["node_id"] != node["id"]:
                 raise InvalidScene("Projected track identity/order mismatch")
+            if scene["schema"].endswith("/2"):
+                for control in _array(row["controls"], len(node["keyframes"])-1, len(node["keyframes"])-1):
+                    for value in _array(control, 4, 4):
+                        if type(value) is not str:
+                            raise InvalidScene("Plan geometry must use canonical rational strings")
+                        _q(value, 10000, 1024, 1024)
             for keyframe in _array(row["keyframes"], len(node["keyframes"]), len(node["keyframes"])):
                 _array(keyframe, 3, 3)
                 for value in keyframe:
@@ -369,7 +448,7 @@ def _verify_plan(plan, budget):
         for k, v in _checks(len(scene["nodes"])).items():
             if type(plan["verification"][k]) is not int or plan["verification"][k] != v:
                 raise InvalidScene("Forged verification counts")
-        if type(plan["verification"]["scope"]) is not str or plan["verification"]["scope"] != SCOPE:
+        if type(plan["verification"]["scope"]) is not str or plan["verification"]["scope"] != _scope(scene):
             raise InvalidScene("Unsupported verification scope")
         tracks, halves, radii, viewport, gap = _geometry(scene, scale)
         zero = (Fraction(0), Fraction(0))
@@ -384,7 +463,7 @@ def _verify_plan(plan, budget):
         for i, j in itertools.combinations(range(len(tracks)), 2):
             if _overlap(tracks[i], halves[i], offsets[i], tracks[j], halves[j], offsets[j], gap, budget) is not None:
                 raise InvalidScene("Continuous label-label conflict")
-        return {"valid": True, "input_sha256": expected["input_sha256"], "checks": _checks(len(tracks)), "scope": SCOPE}
+        return {"valid": True, "input_sha256": expected["input_sha256"], "checks": _checks(len(tracks)), "scope": _scope(scene)}
     except InvalidScene as exc:
         raise InvalidPlan(str(exc)) from None
 

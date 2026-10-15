@@ -43,6 +43,23 @@ Candidate family for half-envelope (hx,hy), marker radius r and margin g: let X=
 
 ## APIs and refusals
 
-`validate_intent(data)` and `validate_scene(data)` return normalized new JSON data or raise `InvalidScene`. `compile_scene(scene, work_budget=50000)` validates input and returns a plan or raises `NoSolution` or `SearchBudgetExceeded`. Work budget is an integer 1..1000000; it charges interval-piece inequality work and finite-search steps, not wall-clock milliseconds. Budget exhaustion is inconclusive and never returned as infeasibility. `verify_plan(plan)` recomputes all geometry and returns `{valid: true, input_sha256, checks: {...}, scope}` or raises `InvalidPlan`. Exceptions derive from `KinetylError(ValueError)`.
+`validate_intent(data)` and `validate_scene(data)` return normalized new JSON data or raise `InvalidScene`. `compile_scene(scene, work_budget=250000)` validates input and returns a plan or raises `NoSolution` or `SearchBudgetExceeded`. Work budget is an integer 1..1000000; it charges interval-piece inequality work and finite-search steps, not wall-clock milliseconds. Budget exhaustion is inconclusive and never returned as infeasibility. `verify_plan(plan)` recomputes all geometry and returns `{valid: true, input_sha256, checks: {...}, scope}` or raises `InvalidPlan`. Exceptions derive from `KinetylError(ValueError)`.
 
 The verifier is independent of compiler success claims and checks scene identity, node order/cardinality, exact projected coordinates, permitted scale/offsets, viewport inclusion for labels and dots, every label pair, and every label-dot pair across the whole time domain. It does not authenticate measurement metadata or establish native pixel fidelity.
+
+
+## Cubic trajectories, version 2
+
+`kinetyl-intent/2`, `kinetyl-scene/2` and `kinetyl-plan/2` retain the corresponding version 1 fields and bounds. Every version 2 node also requires `controls`: exactly one four-number row `[c1x,c1y,c2x,c2y]` per adjacent keyframe pair. Controls use the same rational syntax, 256-bit input bounds and magnitude limit 10000 as world coordinates. All controls are copied into the canonical source identity. A version 1 document rejects controls, and the plan and scene versions must agree.
+
+For endpoints A and B and controls C and D, the segment position is `(1-u)^3 A + 3(1-u)^2 u C + 3(1-u)u^2 D + u^3 B`, where `u=(time-start)/(end-start)`. Time is linear within each segment. Coincident endpoints and stationary segments are valid. Segment boundaries may differ between objects. Polynomial smoothstep along a straight line uses C=A and D=B. A cubic spatial path composed with another cubic time function is generally degree nine and is outside this format. CSS cubic-bezier timing functions and arbitrary callbacks are unsupported.
+
+Every version 2 `layout.projected_tracks` row additionally requires `controls` with each coordinate multiplied by `camera_scale`. Imported controls must be canonical rational strings; altered controls, source identities or versions are rejected. The exact version 2 scope is:
+
+`Exact declared rectangles; piecewise-cubic Bezier centers with linear segment time; fixed presentation geometry; static axis-aligned camera; square clearance.`
+
+Collision checks ask whether four strict polynomial inequalities hold simultaneously within a merged time segment. The rational kernel uses interval bounds and square-free Sturm sign cells, returning a rational conflict witness. Continuous viewport checks include internal excursions, not just endpoints or the control hull. Touching without penetration is permitted, as in version 1. Geometry remains fixed rectangles and enclosing marker squares.
+
+Compiler default work budget is 250000, with the existing maximum 1000000. Cubic polynomial operations consume that budget. Derived polynomial coefficients/denominators and root/witness separation have an additional 16384-bit ceiling; products have degree at most 12. Exhaustion raises an inconclusive outcome, never `NoSolution` or a verified plan. Imported verification remains bounded and refuses an inconclusive plan. These are arithmetic/work limits, not wall-clock or universal performance guarantees.
+
+Version 1 examples retain their exact normalized identities and compiled plan values. Version 2 is supported end to end by Python, the portable browser studio, CLI examples, typography measurement and the optional native renderer. See [curved motion](docs/curved-motion.md) for an editable example and evidence limits.

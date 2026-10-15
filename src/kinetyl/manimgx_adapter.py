@@ -198,16 +198,25 @@ def measure_scene(data: object) -> dict:
         raise
     except Exception as exc:
         raise AdapterError(f"Native text measurement failed ({type(exc).__name__}).") from exc
-    return core.validate_scene({**intent, "schema": "kinetyl-scene/1", "nodes": nodes})
+    return core.validate_scene({**intent, "schema": intent["schema"].replace("intent", "scene"), "nodes": nodes})
 
 
-def _point(keyframes, time):
+def _point(keyframes, time, controls=None):
     frames = [[Fraction(v) for v in frame] for frame in keyframes]
     if time <= frames[0][0]:
         return frames[0][1], frames[0][2]
-    for left, right in zip(frames, frames[1:]):
+    for i, (left, right) in enumerate(zip(frames, frames[1:])):
         if time <= right[0]:
             u = (time - left[0]) / (right[0] - left[0])
+            if controls is not None:
+                c = list(map(Fraction, controls[i]))
+                # de Casteljau evaluation, distinct from the power-basis kernel.
+                def coordinate(k):
+                    points = [left[k+1], c[k], c[k+2], right[k+1]]
+                    while len(points) > 1:
+                        points = [(1-u)*a + u*b for a, b in zip(points, points[1:])]
+                    return points[0]
+                return coordinate(0), coordinate(1)
             return left[1] + u * (right[1] - left[1]), left[2] + u * (right[2] - left[2])
     return frames[-1][1], frames[-1][2]
 
@@ -221,7 +230,7 @@ def _render_scene(renderer, scene, layout, colors):
             self.camera.frame.scale(1 / float(scale))
             dots, labels = [], []
             for node, color in zip(scene["nodes"], colors):
-                x, y = _point(node["keyframes"], Fraction(0))
+                x, y = _point(node["keyframes"], Fraction(0), node.get("controls"))
                 dx, dy = offsets[node["id"]]
                 dot = renderer.Dot((float(x), float(y), 0), radius=float(Fraction(node["radius"]) / scale), color="#FFFFFF")
                 label = renderer.Text(node["text"], font=FONT, font_size=node["font_size"], color=color).scale(1 / float(scale))
@@ -229,6 +238,18 @@ def _render_scene(renderer, scene, layout, colors):
                 dots.append(dot)
                 labels.append(label)
             self.add(*dots, *labels)
+            if scene["schema"].endswith("/2"):
+                animations = []
+                duration = Fraction(scene["duration"])
+                for node, dot, label in zip(scene["nodes"], dots, labels):
+                    dx, dy = offsets[node["id"]]
+                    for mob, offset in ((dot, (Fraction(0), Fraction(0))), (label, (dx/scale, dy/scale))):
+                        def update(target, alpha, n=node, off=offset):
+                            x, y = _point(n["keyframes"], Fraction(alpha)*duration, n["controls"])
+                            target.move_to((float(x+off[0]), float(y+off[1]), 0))
+                        animations.append(renderer.UpdateFromAlphaFunc(mob, update, rate_func=renderer.linear))
+                self.play(*animations, run_time=duration)
+                return
             boundaries = sorted({Fraction(frame[0]) for node in scene["nodes"] for frame in node["keyframes"]})
             for start, end in zip(boundaries, boundaries[1:]):
                 animations = []
@@ -310,7 +331,7 @@ def render_plan(plan: object, output_path: str | os.PathLike, pixel_budget: int 
     # Remeasure the exact text and outlines with this package/font version. A
     # forged provenance label or same-width replacement glyph cannot pass by
     # supplying a convenient mathematical rectangle alone.
-    intent = {**scene, "schema": "kinetyl-intent/1", "nodes": [{k: v for k, v in node.items() if k != "envelope"} for node in scene["nodes"]]}
+    intent = {**scene, "schema": scene["schema"].replace("scene", "intent"), "nodes": [{k: v for k, v in node.items() if k != "envelope"} for node in scene["nodes"]]}
     native_scene = measure_scene(intent)
     if native_scene != scene:
         raise AdapterError("Plan typography does not match fresh pinned native font measurement.")
@@ -350,7 +371,7 @@ def render_plan(plan: object, output_path: str | os.PathLike, pixel_budget: int 
                     raise AdapterError("Native ID frames are incomplete or out of order.")
                 time = min(Fraction(index, fps), duration)
                 for node, offset, box in zip(scene["nodes"], offsets, boxes):
-                    x, y = _point(node["keyframes"], time)
+                    x, y = _point(node["keyframes"], time, node.get("controls"))
                     x, y = x * scale + offset[0], y * scale + offset[1]
                     hx, hy = Fraction(node["envelope"]["width"]) / 2, Fraction(node["envelope"]["height"]) / 2
                     predicted = [float((x - hx + half_width) * width / (2 * half_width)),

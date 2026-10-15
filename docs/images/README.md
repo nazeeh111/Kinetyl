@@ -1,0 +1,3 @@
+# Studio screenshot provenance
+
+studio.png is an actual full-page browser capture of the exported 0.2 curved-crossing studio at1280×900, Compiled placement, time3s,16:9 canvas. No synthetic diagram overlay or image editing. Reproduce by exporting examples/curved-crossing.plan.json, serving the export over localhost HTTP, opening it at that viewport, choosing Jump to collision and Compiled, then taking a full-page screenshot. Source scene/plan and text outlines are retained in examples and src/kinetyl/examples. The browser walkthrough additionally checked portrait compilation, control editing, download, re-import and recovery; those actions are separate from this screenshot.

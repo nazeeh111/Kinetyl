@@ -4,7 +4,7 @@ Serve this directory with python3 -m http.server 8000, then open http://localhos
 Browser geometry compilation and independent verification run locally with exact BigInt rationals.
 SHA256 uses WebCrypto, requiring HTTPS or trusted localhost. No remote compute or account.
 plan.json and scene.json are editable data; glyph outlines are generated typography.
-Fixed 2D envelopes, piecewise linear trajectories, static camera only. Measurements unsigned.
+Fixed 2D envelopes, piecewise linear (/1) or cubic Bezier (/2) trajectories, static camera only. Measurements unsigned.
 Native ManimGX video is produced separately by kinetyl render; preview is not fresh native proof.
 An actual offline file:// browser journey has not been verified.
 Source and license: https://github.com/nazeeh111/Kinetyl

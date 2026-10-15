@@ -2,7 +2,9 @@
  * Preview drawing may use floats; every constraint below uses reduced BigInt rationals.
  * Metadata and supplied envelopes are declarations, not authenticated pixel evidence.
  */
+import {polynomialTools, PolynomialLimit} from './polynomial.mjs';
 export const SCOPE = 'Exact declared rectangles; piecewise-linear centers; fixed presentation geometry; static axis-aligned camera; square clearance.';
+export const CUBIC_SCOPE = 'Exact declared rectangles; piecewise-cubic Bezier centers with linear segment time; fixed presentation geometry; static axis-aligned camera; square clearance.';
 export class KinetylError extends Error { constructor(message) { super(message); this.name = new.target.name; } }
 export class InvalidScene extends KinetylError {}
 export class InvalidPlan extends KinetylError {}
@@ -28,6 +30,12 @@ class Q {
   toString() { return this.d === 1n ? String(this.n) : `${this.n}/${this.d}`; }
 }
 const ZERO = new Q(0n), ONE = new Q(1n), TWO = new Q(2n), FOUR = new Q(4n);
+const polynomial = polynomialTools(Q);
+const sceneScope = scene => scene.schema === 'kinetyl-scene/2' ? CUBIC_SCOPE : SCOPE;
+function negativeWitness(polynomials, budget) {
+  try { return polynomial.negativeWitness(polynomials, ZERO, ONE, budget); }
+  catch (error) { if (error instanceof PolynomialLimit) throw new SearchBudgetExceeded(error.message); throw error; }
+}
 const bitLength = n => abs(n).toString(2).length;
 const fullMatch = (pattern, value) => pattern.exec(value)?.[0] === value;
 function numberQ(value) {
@@ -105,7 +113,8 @@ function glyphs(data, width, height) {
 }
 export function normalizeScene(data) {
   shape(data, ['schema', 'duration', 'nodes', 'export', 'margin', 'camera_scales', 'min_font_size']);
-  if (data.schema !== 'kinetyl-scene/1') throw new InvalidScene('Unsupported measured scene schema');
+  if (!['kinetyl-scene/1', 'kinetyl-scene/2'].includes(data.schema)) throw new InvalidScene('Unsupported measured scene schema');
+  const cubic = data.schema === 'kinetyl-scene/2';
   const duration = rational(data.duration, 60);
   if (duration.cmp(ZERO) <= 0) throw new InvalidScene('Duration must be positive');
   shape(data.export, ['width', 'height', 'frame_rate', 'frame_height']);
@@ -117,7 +126,7 @@ export function normalizeScene(data) {
   if (scales.some(v => v.cmp(ZERO) <= 0) || new Set(scales.map(String)).size !== scales.length) throw new InvalidScene('Camera scales must be positive and distinct');
   const minFont = integer(data.min_font_size, 1, 256), identities = new Set(); let glyphCount = 0;
   const nodes = array(data.nodes, 1, 8).map(node => {
-    shape(node, ['id', 'text', 'font_size', 'color', 'radius', 'keyframes', 'envelope']);
+    shape(node, ['id', 'text', 'font_size', 'color', 'radius', 'keyframes', 'envelope', ...(cubic ? ['controls'] : [])]);
     const id = text(node.id, 32);
     if (!fullMatch(/^[A-Za-z][A-Za-z0-9_-]{0,31}$/, id) || identities.has(id)) throw new InvalidScene('Node identities must be unique ASCII identifiers');
     identities.add(id);
@@ -127,6 +136,7 @@ export function normalizeScene(data) {
     if (radius.cmp(ZERO) <= 0) throw new InvalidScene('Marker radius must be positive');
     const track = array(node.keyframes, 2, 16).map(k => array(k, 3, 3).map((v, j) => rational(v, j ? 10000 : 60)));
     if (!track[0][0].eq(ZERO) || !track.at(-1)[0].eq(duration) || track.slice(1).some((k, i) => track[i][0].cmp(k[0]) >= 0)) throw new InvalidScene('Keyframes require shared 0..duration domain and increasing times');
+    const controls = cubic ? array(node.controls, track.length - 1, track.length - 1).map(row => array(row, 4, 4).map(v => String(rational(v)))) : null;
     shape(node.envelope, ['width', 'height', 'measurement', 'glyph_paths']);
     const width = rational(node.envelope.width, 64), height = rational(node.envelope.height, 16);
     if (width.cmp(ZERO) <= 0 || height.cmp(ZERO) <= 0) throw new InvalidScene('Measured envelope must have positive dimensions');
@@ -134,9 +144,9 @@ export function normalizeScene(data) {
     const measurement = {engine: text(meta.engine), version: text(meta.version), font: text(meta.font)};
     const {paths, count} = glyphs(node.envelope.glyph_paths, width, height); glyphCount += count;
     if (glyphCount > 32768) throw new InvalidScene('Scene glyph command budget exceeded');
-    return {id, text: label, font_size: font, color: node.color.toUpperCase(), radius: String(radius), keyframes: track.map(k => k.map(String)), envelope: {width: String(width), height: String(height), measurement, glyph_paths: paths}};
+    return {id, text: label, font_size: font, color: node.color.toUpperCase(), radius: String(radius), keyframes: track.map(k => k.map(String)), envelope: {width: String(width), height: String(height), measurement, glyph_paths: paths}, ...(cubic ? {controls} : {})};
   });
-  return {schema: 'kinetyl-scene/1', duration: String(duration), nodes, export: output, margin: String(margin), camera_scales: scales.map(String), min_font_size: minFont};
+  return {schema: data.schema, duration: String(duration), nodes, export: output, margin: String(margin), camera_scales: scales.map(String), min_font_size: minFont};
 }
 
 // Keys in version 1 are ASCII. Values retain their validated Unicode code points.
@@ -167,6 +177,7 @@ function point(track, time) {
   throw new InvalidScene('Time outside trajectory domain');
 }
 function overlap(a, ha, oa, b, hb, ob, margin, budget) {
+  if (a.controls || b.controls) return overlapCurves(a, ha, oa, b, hb, ob, margin, budget);
   budget.spend();
   const times = new Map([...a, ...b].map(k => [String(k[0]), k[0]]));
   const cuts = Array.from(times.values()).sort((x, y) => x.cmp(y));
@@ -204,7 +215,47 @@ function overlap(a, ha, oa, b, hb, ob, margin, budget) {
   }
   return null;
 }
+function segmentPolynomials(track, start, end) {
+  for (let i = 1; i < track.length; i++) {
+    const a = track[i - 1], b = track[i];
+    if (a[0].cmp(start) <= 0 && end.cmp(b[0]) <= 0) {
+      const length = b[0].sub(a[0]), from = start.sub(a[0]).div(length), to = end.sub(a[0]).div(length);
+      return [0, 1].map(axis => {
+        const controls = track.controls?.[i - 1];
+        const p = controls ? polynomial.bezierPower([a[axis + 1], controls[axis], controls[axis + 2], b[axis + 1]]) : [a[axis + 1], b[axis + 1].sub(a[axis + 1])];
+        return polynomial.restrict(p, from, to);
+      });
+    }
+  }
+  throw new InvalidScene('Time outside trajectory segment domain');
+}
+function overlapCurves(a, ha, oa, b, hb, ob, margin, budget) {
+  budget.spend();
+  const times = new Map([...a, ...b].map(k => [String(k[0]), k[0]])), cuts = Array.from(times.values()).sort((x, y) => x.cmp(y));
+  for (let i = 1; i < cuts.length; i++) {
+    budget.spend(4); const start = cuts[i - 1], end = cuts[i];
+    const pa = segmentPolynomials(a, start, end), pb = segmentPolynomials(b, start, end), inequalities = [];
+    for (let axis = 0; axis < 2; axis++) {
+      const extent = ha[axis].add(hb[axis]).add(margin);
+      const delta = polynomial.add(polynomial.add(pa[axis], pb[axis].map(c => c.neg())), [oa[axis].sub(ob[axis])]);
+      inequalities.push(polynomial.add(delta, [extent.neg()]), polynomial.add(delta.map(c => c.neg()), [extent.neg()]));
+    }
+    const witness = negativeWitness(inequalities, budget);
+    if (witness !== null) return start.add(end.sub(start).mul(witness));
+  }
+  return null;
+}
 function inside(track, half, offset, viewport, budget) {
+  if (track.controls) {
+    for (let i = 1; i < track.length; i++) {
+      budget.spend(2); const p = segmentPolynomials(track, track[i - 1][0], track[i][0]);
+      for (let axis = 0; axis < 2; axis++) for (const sign of [ONE, ONE.neg()]) {
+        const inequality = polynomial.add(p[axis].map(c => c.mul(sign).neg()), [viewport[axis].sub(half[axis]).sub(offset[axis].mul(sign))]);
+        if (negativeWitness([inequality], budget) !== null) return false;
+      }
+    }
+    return true;
+  }
   budget.spend(2 * track.length);
   return track.every(k => [0, 1].every(axis => k[axis + 1].add(offset[axis]).abs().add(half[axis]).cmp(viewport[axis]) <= 0));
 }
@@ -213,20 +264,24 @@ function slots(half, radius, gap) {
   return [[ZERO, y], [ZERO, y.neg()], [x, ZERO], [x.neg(), ZERO], [x, y], [x.neg(), y], [x, y.neg()], [x.neg(), y.neg()], [ZERO, y.mul(TWO)], [ZERO, y.mul(TWO).neg()], [x.mul(TWO), ZERO], [x.mul(TWO).neg(), ZERO]];
 }
 function geometry(scene, scale) {
-  return {tracks: scene.nodes.map(n => n.keyframes.map(k => k.map((v, j) => j ? rational(v).mul(scale) : rational(v)))),
+  return {tracks: scene.nodes.map(n => {
+    const track = n.keyframes.map(k => k.map((v, j) => j ? rational(v).mul(scale) : rational(v)));
+    if (n.controls) track.controls = n.controls.map(row => row.map(v => rational(v).mul(scale)));
+    return track;
+  }),
     halves: scene.nodes.map(n => [rational(n.envelope.width).div(TWO), rational(n.envelope.height).div(TWO)]),
     radii: scene.nodes.map(n => rational(n.radius)), viewport: [FOUR.mul(new Q(BigInt(scene.export.width), BigInt(scene.export.height))), FOUR], gap: rational(scene.margin)};
 }
 const checks = n => ({label_pair_checks: n * (n - 1) / 2, label_dot_checks: n * n, viewport_checks: 2 * n});
 async function makePlan(scene, scale, offsets) {
   const {tracks, viewport} = geometry(scene, scale);
-  return {schema: 'kinetyl-plan/1', scene, input_sha256: await sceneIdentity(scene), layout: {camera_scale: String(scale),
+  return {schema: scene.schema === 'kinetyl-scene/2' ? 'kinetyl-plan/2' : 'kinetyl-plan/1', scene, input_sha256: await sceneIdentity(scene), layout: {camera_scale: String(scale),
     offsets: scene.nodes.map((n, i) => ({node_id: n.id, x: String(offsets[i][0]), y: String(offsets[i][1])})),
-    projected_tracks: scene.nodes.map((n, i) => ({node_id: n.id, keyframes: tracks[i].map(k => k.map(String))})),
-    viewport: {half_width: String(viewport[0]), half_height: String(viewport[1])}}, verification: {...checks(scene.nodes.length), scope: SCOPE}};
+    projected_tracks: scene.nodes.map((n, i) => ({node_id: n.id, keyframes: tracks[i].map(k => k.map(String)), ...(tracks[i].controls ? {controls: tracks[i].controls.map(row => row.map(String))} : {})})),
+    viewport: {half_width: String(viewport[0]), half_height: String(viewport[1])}}, verification: {...checks(scene.nodes.length), scope: sceneScope(scene)}};
 }
 
-export async function compileScene(data, {workBudget = 50000} = {}) {
+export async function compileScene(data, {workBudget = 250000} = {}) {
   const scene = normalizeScene(data), budget = new Budget(workBudget), zero = [ZERO, ZERO];
   for (const value of scene.camera_scales) {
     budget.spend(); const scale = rational(value, 1);
@@ -265,8 +320,9 @@ export async function compileScene(data, {workBudget = 50000} = {}) {
 async function verifyInternal(plan, budget) {
   try {
     shape(plan, ['schema', 'scene', 'input_sha256', 'layout', 'verification']);
-    if (plan.schema !== 'kinetyl-plan/1') throw new InvalidScene('Unsupported plan schema');
+    if (!['kinetyl-plan/1', 'kinetyl-plan/2'].includes(plan.schema)) throw new InvalidScene('Unsupported plan schema');
     const scene = normalizeScene(plan.scene);
+    if (plan.schema !== (scene.schema === 'kinetyl-scene/2' ? 'kinetyl-plan/2' : 'kinetyl-plan/1')) throw new InvalidScene('Scene and plan schema version mismatch');
     const identity = await sceneIdentity(scene);
     if (typeof plan.input_sha256 !== 'string' || plan.input_sha256 !== identity || canonicalSerialize(plan.scene) !== canonicalSerialize(scene)) throw new InvalidScene('Plan scene identity or normalization mismatch');
     shape(plan.layout, ['camera_scale', 'offsets', 'projected_tracks', 'viewport']);
@@ -278,9 +334,13 @@ async function verifyInternal(plan, budget) {
       return [rational(row.x, 128, 1024, 1024), rational(row.y, 128, 1024, 1024)];
     });
     array(layout.projected_tracks, n, n).forEach((row, i) => {
-      shape(row, ['node_id', 'keyframes']);
+      shape(row, ['node_id', 'keyframes', ...(scene.schema === 'kinetyl-scene/2' ? ['controls'] : [])]);
       if (row.node_id !== scene.nodes[i].id) throw new InvalidScene('Projected track identity/order mismatch');
       array(row.keyframes, scene.nodes[i].keyframes.length, scene.nodes[i].keyframes.length).forEach(k => array(k, 3, 3).forEach(v => {
+        if (typeof v !== 'string') throw new InvalidScene('Plan geometry must use canonical rational strings');
+        rational(v, 10000, 1024, 1024);
+      }));
+      if (scene.schema === 'kinetyl-scene/2') array(row.controls, scene.nodes[i].controls.length, scene.nodes[i].controls.length).forEach(control => array(control, 4, 4).forEach(v => {
         if (typeof v !== 'string') throw new InvalidScene('Plan geometry must use canonical rational strings');
         rational(v, 10000, 1024, 1024);
       }));
@@ -294,7 +354,7 @@ async function verifyInternal(plan, budget) {
     if (canonicalSerialize(layout) !== canonicalSerialize(expected.layout)) throw new InvalidScene('Noncanonical layout, altered trajectory or viewport');
     shape(plan.verification, ['label_pair_checks', 'label_dot_checks', 'viewport_checks', 'scope']);
     for (const [k, v] of Object.entries(checks(n))) if (!Number.isInteger(plan.verification[k]) || plan.verification[k] !== v) throw new InvalidScene('Forged verification counts');
-    if (plan.verification.scope !== SCOPE) throw new InvalidScene('Unsupported verification scope');
+    if (plan.verification.scope !== sceneScope(scene)) throw new InvalidScene('Unsupported verification scope');
     const {tracks, halves, radii, viewport, gap} = geometry(scene, scale), zero = [ZERO, ZERO];
     for (let i = 0; i < n; i++) {
       if (!slots(halves[i], radii[i], gap).some(o => o[0].eq(offsets[i][0]) && o[1].eq(offsets[i][1]))) throw new InvalidScene('Offset outside declared finite family');
@@ -302,7 +362,7 @@ async function verifyInternal(plan, budget) {
       for (let j = 0; j < n; j++) if (overlap(tracks[i], halves[i], offsets[i], tracks[j], [radii[j], radii[j]], zero, gap, budget) !== null) throw new InvalidScene('Continuous label-dot conflict');
     }
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (overlap(tracks[i], halves[i], offsets[i], tracks[j], halves[j], offsets[j], gap, budget) !== null) throw new InvalidScene('Continuous label-label conflict');
-    return {valid: true, input_sha256: identity, checks: checks(n), scope: SCOPE};
+    return {valid: true, input_sha256: identity, checks: checks(n), scope: sceneScope(scene)};
   } catch (error) { if (error instanceof InvalidScene) throw new InvalidPlan(error.message); throw error; }
 }
 export async function verifyPlan(plan) {
@@ -335,5 +395,5 @@ export function inspectLayout(data, {cameraScale = null, offsets = null, workBud
       if (time !== null) collisions.push({kind: 'label-label', node_ids: [scene.nodes[i].id, scene.nodes[j].id], time: String(time)});
     }
   }
-  return {valid: !collisions.length && !clipping.length, camera_scale: String(scale), collisions, clipping, checks: checks(n), scope: SCOPE};
+  return {valid: !collisions.length && !clipping.length, camera_scale: String(scale), collisions, clipping, checks: checks(n), scope: sceneScope(scene)};
 }

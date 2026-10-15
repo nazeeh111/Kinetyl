@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createStudio, editedScene, glyphPath, pointAt, number, parseDocument} from '../src/kinetyl/assets/studio.mjs';
+import {createStudio, editedScene, glyphPath, pointAt, trajectoryPath, number, parseDocument} from '../src/kinetyl/assets/studio.mjs';
 import {compileScene, verifyPlan, normalizeScene, NoSolution, SearchBudgetExceeded} from '../src/kinetyl/assets/geometry.mjs';
 
 const IDS = ['stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
@@ -188,7 +188,7 @@ test('editing allows only trajectories and preserves geometry; preview uses data
   assert.deepEqual(pointAt([['0', '-2', '0'], ['3', '2', '0']], 1.5), [0, 0]);
   assert.equal(glyphPath(source.nodes[0].envelope.glyph_paths), 'M-0.1 -0.1 L0.1 -0.1 L0.1 0.1 Z');
   const h = harness(); await h.studio.loadDocument(source);
-  const paths = descendants(h.el.stage).filter(n => n.tagName === 'path'); assert.equal(paths.length, 2);
+  const paths = descendants(h.el.stage).filter(n => n.tagName === 'path' && n.getAttribute('fill-rule') === 'nonzero'); assert.equal(paths.length, 2);
   assert.ok(paths.every(p => p.getAttribute('d') === glyphPath(source.nodes[0].envelope.glyph_paths) && p.getAttribute('fill-rule') === 'nonzero'));
   const fallback = scene(); fallback.nodes[0].envelope.glyph_paths = []; fallback.nodes[0].text = '<img src=x onerror=alert(1)>';
   await h.studio.loadDocument(fallback); assert.equal(h.el.notice.hidden, false); assert.match(h.el.notice.textContent, /illustrative/);
@@ -267,4 +267,30 @@ test('bundled plan duplicate fields are refused before initial acceptance', asyn
   const h = harness({fetch: async () => ({ok: true, text: async () => raw})});
   assert.equal(await h.studio.start(), false); assert.equal(h.studio.getState().plan, null);
   assert.equal(h.el['status-title'].textContent, 'No verified plan loaded'); assert.match(h.el['status-detail'].textContent, /Duplicate JSON field: input_sha256/);
+});
+
+
+test('cubic editor, path preview, aspect change and downloads preserve actual controls', async () => {
+  const source = scene(); source.schema = 'kinetyl-scene/2';
+  source.nodes.forEach((n, i) => { n.envelope.width = '1'; n.keyframes = [[0, i ? 2 : -2, -1], [3, i ? -2 : 2, -1]]; n.controls = [[i ? 2 : -2, 2, i ? -2 : 2, 2]]; });
+  assert.deepEqual(pointAt(source.nodes[0].keyframes, 1.5, source.nodes[0].controls), [0, 1.25]);
+  assert.match(trajectoryPath(source.nodes[0]), /^M -2 -1 C -2 2 2 2 2 -1$/);
+  const h = harness(); assert.equal(await h.studio.loadDocument(source), true);
+  const before = h.studio.getState();
+  const rows = JSON.parse(h.el.paths.value); rows[0].controls[0][1] = '3/2';
+  h.el.paths.value = JSON.stringify(rows); await h.el.paths.emit('input');
+  assert.equal(h.el['save-plan'].disabled, true);
+  await h.el.apply.click(); assert.equal(h.studio.getState().dirty, false);
+  const edited = h.studio.getState();
+  assert.equal(edited.scene.nodes[0].controls[0][1], '3/2');
+  assert.deepEqual(edited.scene.nodes[0].envelope, before.scene.nodes[0].envelope);
+  h.el.aspect.value = 'portrait'; await h.el.aspect.emit('change');
+  assert.equal(h.studio.getState().dirty, false);
+  assert.deepEqual(h.studio.getState().scene.nodes.map(n => [n.keyframes, n.controls]), edited.scene.nodes.map(n => [n.keyframes, n.controls]));
+  await h.el['save-plan'].click(); assert.equal(h.downloads[0].value.schema, 'kinetyl-plan/2');
+  assert.equal((await verifyPlan(h.downloads[0].value)).valid, true);
+  const bad = JSON.parse(h.el.paths.value); delete bad[0].controls;
+  h.el.paths.value = JSON.stringify(bad); await h.el.paths.emit('input'); await h.el.apply.click();
+  assert.equal(h.el['save-plan'].disabled, true);
+  assert.deepEqual(h.studio.getState().scene, h.downloads[0].value.scene);
 });
