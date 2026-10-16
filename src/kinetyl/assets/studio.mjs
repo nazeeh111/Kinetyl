@@ -1,4 +1,5 @@
 import {normalizeScene, compileScene, verifyPlan, inspectLayout, NoSolution, SearchBudgetExceeded} from './geometry.mjs';
+import {createAuthoring, pathRows} from './authoring.mjs';
 
 // Check structure before JSON.parse discards repeated keys. Imports stay data.
 export function parseDocument(raw, maxBytes = 4194304) {
@@ -107,6 +108,11 @@ export function createStudio(doc, dependencies = {}) {
   let scene = null, plan = null, original = null, baseline = null, dirty = true;
   let mode = 'compiled', epoch = 0, playing = false, frame = null, startTime = null;
   const ns = 'http://www.w3.org/2000/svg';
+  const authoring = createAuthoring(doc, {number,
+    onDraft(next) { el.paths.value=JSON.stringify(pathRows(next),null,2);invalidate('Authored paths are a draft. Compile to verify their label layout.');draw(); },
+    onDirty(message) { invalidate(message);draw(); }
+  });
+  let jsonPending=false;
   const write = (id, value) => { el[id].textContent = value; };
   function notice(message = '') { el.notice.hidden = !message; el.notice.textContent = message; }
   function downloads() {
@@ -140,23 +146,24 @@ export function createStudio(doc, dependencies = {}) {
     const world = svg('g', {transform: 'scale(1,-1)'});
     // Grid is presentation geometry, capped even for tiny valid camera scales.
     const gridStep = Math.max(1, Math.ceil(halfW / 12));
-    for (let x = Math.ceil(-halfW / gridStep); x <= halfW / gridStep; x++) svg('line', {x1: x * gridStep, x2: x * gridStep, y1: -4, y2: 4, stroke: x ? '#19283b' : '#34475f', 'stroke-width': .012}, world);
-    for (let y = -4; y <= 4; y++) svg('line', {x1: -halfW, x2: halfW, y1: y, y2: y, stroke: y ? '#19283b' : '#34475f', 'stroke-width': .012}, world);
+    for (let x = Math.ceil(-halfW / gridStep); x <= halfW / gridStep; x++) svg('line', {x1: x * gridStep, x2: x * gridStep, y1: -4, y2: 4, stroke: x ? '#e5e7eb' : '#94a3b8', 'stroke-width': .012}, world);
+    for (let y = -4; y <= 4; y++) svg('line', {x1: -halfW, x2: halfW, y1: y, y2: y, stroke: y ? '#e5e7eb' : '#94a3b8', 'stroke-width': .012}, world);
     scene.nodes.forEach((node, i) => {
+      const color=['#1d4ed8','#a21caf','#0f766e','#b45309'][i%4];
       const [wx, wy] = pointAt(node.keyframes, time, node.controls), x = wx * scale, y = wy * scale;
       const hx = number(node.envelope.width) / 2, hy = number(node.envelope.height) / 2, r = number(node.radius);
       const offset = mode === 'before' ? [0, hy + r + number(scene.margin)] : [number(plan.layout.offsets[i].x), number(plan.layout.offsets[i].y)];
-      svg('path', {d: trajectoryPath(node, scale), fill: 'none', stroke: node.color, opacity: .25, 'stroke-width': .023, 'stroke-dasharray': '.06 .10'}, world);
-      svg('line', {x1: x, y1: y, x2: x + offset[0], y2: y + offset[1], stroke: node.color, opacity: .38, 'stroke-width': .014}, world);
-      svg('rect', {x: x - r, y: y - r, width: 2 * r, height: 2 * r, fill: node.color}, world);
+      svg('path', {d: trajectoryPath(node, scale), fill: 'none', stroke: color, opacity: .25, 'stroke-width': .023, 'stroke-dasharray': '.06 .10'}, world);
+      svg('line', {x1: x, y1: y, x2: x + offset[0], y2: y + offset[1], stroke: color, opacity: .38, 'stroke-width': .014}, world);
+      svg('rect', {x: x - r, y: y - r, width: 2 * r, height: 2 * r, fill: color}, world);
       const label = svg('g', {transform: `translate(${x + offset[0]},${y + offset[1]})`}, world);
-      if (node.envelope.glyph_paths.length) svg('path', {d: glyphPath(node.envelope.glyph_paths), fill: node.color, 'fill-rule': 'nonzero'}, label);
+      if (node.envelope.glyph_paths.length) svg('path', {d: glyphPath(node.envelope.glyph_paths), fill: color, 'fill-rule': 'nonzero'}, label);
       else {
-        const text = svg('text', {transform: 'scale(1,-1)', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': Math.min(.36, hy * 1.5), fill: node.color}, label);
+        const text = svg('text', {transform: 'scale(1,-1)', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': Math.min(.36, hy * 1.5), fill: color}, label);
         text.textContent = node.text;
       }
       if (el.envelopes.checked) {
-        svg('rect', {x: -hx, y: -hy, width: 2 * hx, height: 2 * hy, fill: 'none', stroke: node.color, opacity: .7, 'stroke-width': .012}, label);
+        svg('rect', {x: -hx, y: -hy, width: 2 * hx, height: 2 * hy, fill: 'none', stroke: color, opacity: .7, 'stroke-width': .012}, label);
         svg('rect', {x: x - r, y: y - r, width: 2 * r, height: 2 * r, fill: 'none', stroke: '#fff', 'stroke-width': .01}, world);
       }
     });
@@ -177,6 +184,7 @@ export function createStudio(doc, dependencies = {}) {
     baseline = inspect(scene);
     dirty = false; downloads(); notice(); stop();
     el.paths.value = JSON.stringify(scene.nodes.map(n => ({id: n.id, keyframes: n.keyframes, ...(n.controls ? {controls: n.controls} : {})})), null, 2);
+    jsonPending=false;authoring?.load(scene, first);
     el.time.max = String(number(scene.duration)); el.time.value = '0'; el.aspect.value = aspectValue(scene);
     el.witness.disabled = !baseline.collisions.length;
     write('status-title', 'Full trajectory checked');
@@ -214,6 +222,7 @@ export function createStudio(doc, dependencies = {}) {
       }
       const next = normalizeScene(data);
       if (revision !== epoch) return false;
+      if(authoring){authoring.load(next,true);el.paths.value=JSON.stringify(pathRows(next),null,2);jsonPending=false;}
       return await compile(next, true);
     } catch (error) {
       if (revision !== epoch) return false;
@@ -221,28 +230,32 @@ export function createStudio(doc, dependencies = {}) {
       notice(scene ? 'Previous document retained for recovery. Restore original to re-enable its downloads.' : 'Import a supported measured scene or independently valid plan.'); draw(); return false;
     }
   }
-  function save(value, filename) {
-    if (dirty || !plan) return;
+  function emitDownload(value, filename) {
     if (dependencies.download) return dependencies.download(value, filename);
     const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2) + '\n'], {type: 'application/json'}));
     const anchor = doc.createElement('a'); anchor.href = url; anchor.download = filename;
     doc.body.appendChild(anchor); anchor.click(); anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  el.paths.addEventListener('input', () => { invalidate(); draw(); });
+  function save(value, filename) { if(!dirty&&plan)emitDownload(value,filename); }
+  el.paths.addEventListener('input', () => { const raw=el.paths.value;authoring?.cancel();el.paths.value=raw;jsonPending=true;authoring?.block();invalidate(); draw(); });
   el.apply.addEventListener('click', async () => {
-    if (!scene) return;
-    try { await compile(editedScene(scene, el.paths.value)); }
+    if (!scene&&!authoring?.get()) return;
+    try { if(authoring?.hasPending())throw Error('Apply or cancel the pending point coordinates first');const next=editedScene(authoring?.get()??scene, el.paths.value);if(jsonPending)authoring?.adopt(next);jsonPending=false;await compile(next); }
     catch (error) { invalidate('Edited paths were refused: ' + error.message); write('edit-status', error.message); draw(); }
   });
-  el.restore.addEventListener('click', async () => { if (original) await compile(original); });
+  el.restore.addEventListener('click', async () => { if (original) {authoring?.cancel();const restored=await compile(original);if(restored)authoring?.load(scene,true);} });
+  doc.getElementById('json-apply')?.addEventListener('click',()=>{if(!scene&&!authoring?.get())return;try{const next=editedScene(authoring?.get()??scene,el.paths.value);authoring?.adopt(next);jsonPending=false;write('edit-status','JSON applied to visual draft. Compile to verify.');}catch(error){write('edit-status','JSON refused: '+error.message);}});
+  doc.getElementById('json-discard')?.addEventListener('click',()=>{const next=authoring?.get();if(!next)return;el.paths.value=JSON.stringify(pathRows(next),null,2);jsonPending=false;authoring.unblock();invalidate('JSON text discarded. Visual draft retained; compile to verify.');draw();});
   el.aspect.addEventListener('change', async () => {
-    if (!scene) return;
+    if (!scene&&!authoring?.get()) return;
     try {
-      const next = editedScene(scene, el.paths.value);
+      if(authoring?.hasPending())throw Error('Apply or cancel pending point coordinates first');
+      if(jsonPending)throw Error('Apply or discard pending JSON text before changing the canvas');
+      const next = editedScene(authoring?.get()??scene, el.paths.value);
       const sizes = {wide: [960, 540], portrait: [540, 960], square: [720, 720]};
       const size = sizes[el.aspect.value]; if (!size) throw new Error('Unsupported canvas aspect');
-      [next.export.width, next.export.height] = size; await compile(next);
+      [next.export.width, next.export.height] = size;authoring?.adopt(next);await compile(next);
     } catch (error) { invalidate('Canvas change refused: ' + error.message); draw(); }
   });
   for (const [id, next] of [['original', 'before'], ['repaired', 'compiled']]) el[id].addEventListener('click', () => {
@@ -266,6 +279,7 @@ export function createStudio(doc, dependencies = {}) {
   });
   el['save-plan'].addEventListener('click', () => save(plan, 'kinetyl-plan.json'));
   el['save-scene'].addEventListener('click', () => save(scene, 'kinetyl-scene.json'));
+  doc.getElementById('save-draft')?.addEventListener('click',()=>{const next=authoring?.get();if(!next)return;if(jsonPending||authoring.hasPending()){write('edit-status','Apply or cancel pending point fields and apply/discard JSON text before saving the source draft.');return;}emitDownload(normalizeScene(next),'kinetyl-unverified-draft.scene.json');write('edit-status','Saved source draft, not a verified layout. No compiled plan was exported.');});
   el.load.addEventListener('click', () => el.file.click());
   el.file.addEventListener('change', async () => {
     const file = el.file.files?.[0]; if (!file) return;
@@ -293,7 +307,7 @@ export function createStudio(doc, dependencies = {}) {
       write('status-title', 'No verified plan loaded'); write('status-detail', error.message); notice('Use a supported browser over HTTPS or localhost, or import a measured scene.'); return false;
     }
   }
-  return {start, loadDocument, compile, stop, getState: () => ({scene: structuredClone(scene), plan: structuredClone(plan), dirty, mode, epoch})};
+  return {start, loadDocument, compile, stop, getAuthoringState:()=>authoring?.getState(), getState: () => ({scene: structuredClone(scene), plan: structuredClone(plan), dirty, mode, epoch})};
 }
 
 if (typeof document !== 'undefined') createStudio(document).start();

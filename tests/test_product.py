@@ -34,6 +34,8 @@ class ProductTests(unittest.TestCase):
                 self.assertEqual(archive.testzip(),None)
                 self.assertEqual(set(archive.namelist()),set(manifest['files'])-{'portable.zip'})
                 for name in archive.namelist():self.assertEqual(archive.read(name),(out/name).read_bytes())
+            self.assertEqual((out/'authoring.mjs').read_bytes(),(Path(__file__).parents[1]/'src/kinetyl/assets/authoring.mjs').read_bytes())
+            self.assertIn("from './authoring.mjs'",(out/'studio.mjs').read_text())
             self.assertIn('Permission is hereby granted',(out/'LICENSE.txt').read_text())
             self.assertIn('SIL OPEN FONT LICENSE',(out/'NOTO-LICENSE.txt').read_text())
 
