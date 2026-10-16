@@ -6,7 +6,9 @@ Labels collide between keyframes. Portrait crops erase important points. Kinetyl
 
 [Open the studio](https://nazeeh111.github.io/Kinetyl/) · [Download](https://github.com/nazeeh111/Kinetyl/releases) · [Scene format](SCHEMAS.md)
 
-![Kinetyl motion studio](docs/images/studio.png)
+![Kinetyl exact path authoring, showing a selected Bézier control and its exact coordinates](docs/images/authoring.jpg)
+
+The studio now has a linked world-path editor. Enable **Edit paths**, choose an endpoint or Bézier control, and drag on the visible 1/20-unit grid or enter exact fractions. Arrow keys move one axis; cancel, undo and redo retain exact source values. Compile the draft, switch canvas, then save and reopen the verified plan. [Authoring and recovery](docs/authoring.md).
 
 The default studio shows two cubic trajectories sharing an arch. Use **Before / Compiled**, **Jump to collision**, then switch to **9:16**. The curves and event times stay fixed while labels and camera framing adapt. [Try or author curved motion](docs/curved-motion.md). Actual exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
 
@@ -17,7 +19,7 @@ The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: t
 Python 3.11+. The compiler, verifier and exported browser studio need no runtime dependencies or paid service.
 
 ```sh
-python -m pip install /path/to/kinetyl-0.2.0-py3-none-any.whl
+python -m pip install /path/to/kinetyl-0.3.0-py3-none-any.whl
 kinetyl example curved-crossing --out examples
 kinetyl compile examples/curved-crossing.scene.json --out compiled
 kinetyl verify compiled/plan.json
@@ -30,7 +32,7 @@ Open `http://localhost:8000`. Each output command requires a new destination and
 For your own text and an actual MP4, install the optional pinned renderer:
 
 ```sh
-python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.2.0-py3-none-any.whl'
+python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.3.0-py3-none-any.whl'
 kinetyl measure examples/curved-crossing.intent.json --out measured
 kinetyl compile measured/scene.json --out planned
 kinetyl render planned/plan.json --out video

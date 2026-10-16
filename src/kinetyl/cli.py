@@ -13,7 +13,7 @@ ASSETS=Path(__file__).with_name("assets")
 
 def parser():
     result=argparse.ArgumentParser(description="Keep labels readable throughout supported animation paths.")
-    result.add_argument("--version",action="version",version="0.2.0")
+    result.add_argument("--version",action="version",version="0.3.0")
     commands=result.add_subparsers(dest="command",required=True)
     sample=commands.add_parser("example",help="Write a bundled editable example to a new directory")
     sample.add_argument("name",choices=["eigenvalue-crossing","three-streams","curved-crossing"])
@@ -34,7 +34,7 @@ def parser():
 
 def export(plan,out):
     verification=core.verify_plan(plan)
-    names=["index.html","studio.css","studio.mjs","geometry.mjs","polynomial.mjs","README.txt","LICENSE.txt","NOTO-LICENSE.txt"]
+    names=["index.html","studio.css","studio.mjs","authoring.mjs","geometry.mjs","polynomial.mjs","README.txt","LICENSE.txt","NOTO-LICENSE.txt"]
     files={name:(ASSETS/name).read_bytes() for name in names}
     files.update({"plan.json":data(plan),"scene.json":data(plan["scene"]),"verification.json":data(verification)})
     raw=buffer.BytesIO()

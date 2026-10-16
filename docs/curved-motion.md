@@ -16,7 +16,7 @@ Open the studio, choose **Before**, then **Jump to collision**. Alpha and Beta f
 
 The source is [editable JSON](../examples/curved-crossing.intent.json), with a [retained generator](../tools/build_curved_example.py). Run that generator in the optional pinned rendering environment to remeasure the typography and rebuild both aspects. The measured example works without installing a renderer.
 
-The browser editor exposes each object's `keyframes` and `controls`. Edit a control coordinate, compile, and download the independently checked plan. Invalid edits retain the previous document and pause downloads until recovery or successful compilation. Imports remain data and execute no callbacks. Exported studios include every module and a portable ZIP.
+The linked [path editor](authoring.md) exposes each object's endpoints and controls with exact coordinate fields, a1/20grid and synchronized JSON `keyframes`/`controls`. Edit a control coordinate, compile, and download the independently checked plan. Invalid edits retain the previous document and pause downloads until recovery or successful compilation. Imports remain data and execute no callbacks. Exported studios include every module and a portable ZIP.
 
 ## Author a segment
 

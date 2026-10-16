@@ -1,5 +1,5 @@
 include SCHEMAS.md VALIDATION.md CONTRIBUTING.md SECURITY.md
 recursive-include examples *.json
-recursive-include docs *.md *.txt *.json *.mp4 *.png *.mjs *.html *.css
+recursive-include docs *.md *.txt *.json *.mp4 *.png *.jpg *.mjs *.html *.css
 recursive-include tests *.py *.mjs
 recursive-include tools *.py

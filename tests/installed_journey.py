@@ -38,6 +38,8 @@ with tempfile.TemporaryDirectory() as temp:
         assert main(['export',str(root/(name+'-compiled')/'plan.json'),'--out',str(root/(name+'-studio'))])==0
         studio=root/(name+'-studio')
         assert (studio/'polynomial.mjs').is_file()
+        assert (studio/'authoring.mjs').read_bytes()==files('kinetyl').joinpath('assets/authoring.mjs').read_bytes()
+        assert "from './authoring.mjs'" in (studio/'studio.mjs').read_text()
         with zipfile.ZipFile(studio/'portable.zip') as archive:
             assert archive.testzip() is None
             assert 'polynomial.mjs' in archive.namelist()
