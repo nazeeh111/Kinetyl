@@ -184,7 +184,7 @@ export function createStudio(doc, dependencies = {}) {
     baseline = inspect(scene);
     dirty = false; downloads(); notice(); stop();
     el.paths.value = JSON.stringify(scene.nodes.map(n => ({id: n.id, keyframes: n.keyframes, ...(n.controls ? {controls: n.controls} : {})})), null, 2);
-    jsonPending=false;authoring?.load(scene, first);
+    jsonPending=false;authoring?.load(scene, first);authoring?.verified();
     el.time.max = String(number(scene.duration)); el.time.value = '0'; el.aspect.value = aspectValue(scene);
     el.witness.disabled = !baseline.collisions.length;
     write('status-title', 'Full trajectory checked');
@@ -255,7 +255,7 @@ export function createStudio(doc, dependencies = {}) {
       const next = editedScene(authoring?.get()??scene, el.paths.value);
       const sizes = {wide: [960, 540], portrait: [540, 960], square: [720, 720]};
       const size = sizes[el.aspect.value]; if (!size) throw new Error('Unsupported canvas aspect');
-      [next.export.width, next.export.height] = size;authoring?.adopt(next);await compile(next);
+      [next.export.width, next.export.height] = size;authoring?.adopt(next,'Canvas changed.');await compile(next);
     } catch (error) { invalidate('Canvas change refused: ' + error.message); draw(); }
   });
   for (const [id, next] of [['original', 'before'], ['repaired', 'compiled']]) el[id].addEventListener('click', () => {

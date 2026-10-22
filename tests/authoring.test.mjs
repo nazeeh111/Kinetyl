@@ -89,6 +89,14 @@ test('world view remains stable through exact edits and aspect change; offscreen
  h.el['point-x'].value='10000';h.el['point-y'].value='0';await h.el['point-x'].emit('input');await h.el['point-apply'].click();assert.deepEqual(h.studio.getAuthoringState().viewBox,box);assert.equal(h.el['point-x'].value,'10000');assert.equal(h.studio.getAuthoringState().scene.nodes[0].keyframes[0][1],'10000');
  await h.el['path-undo'].click();h.el.aspect.value='portrait';await h.el.aspect.emit('change');assert.deepEqual(h.studio.getAuthoringState().viewBox,box);assert.equal(h.studio.getAuthoringState().scene.export.width,540);assert.equal(h.studio.getAuthoringState().scene.nodes[0].controls[0][1],'9007199254740993/9007199254740992');
 });
+test('canvas change leaves an honest compiled status after verification',async()=>{
+ const h=harness();await h.studio.loadDocument(cubic());
+ h.el.aspect.value='portrait';await h.el.aspect.emit('change');
+ assert.equal(h.studio.getState().dirty,false);
+ assert.equal(h.el['save-plan'].disabled,false);
+ assert.equal(h.el['author-status'].textContent,'Current source paths are compiled.');
+ assert.equal(h.el['status-title'].textContent,'Full trajectory checked');
+});
 test('pointer cancel restores exact source and committed pointer matches exact fields; undo/redo retains controls',async()=>{
  const h=harness();await h.studio.loadDocument(cubic());await enabled(h);const initial=h.el.paths.value;
  await handleNode(h,0).emit('pointerdown',{pointerId:1});await h.el['author-stage'].emit('pointermove',{pointerId:1,clientX:1.51,clientY:.49});assert.equal(JSON.parse(h.el.paths.value)[0].keyframes[0][1],'3/2');await h.el['author-stage'].emit('keydown',{key:'Escape'});assert.equal(h.el.paths.value,initial);

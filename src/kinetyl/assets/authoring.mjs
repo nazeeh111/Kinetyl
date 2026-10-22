@@ -76,7 +76,8 @@ export function createAuthoring(doc,{number,onDraft,onDirty}) {
     block(){blocked=true;availability();status('Source JSON has pending text. Apply JSON or discard it before a visual edit.');},
     unblock(){blocked=false;availability();status('JSON draft discarded. Visual draft retained.');},
     get:()=>draft?.get(), hasPending:()=>pending||!!drag,
-    adopt(scene){if(pending||drag)throw Error('Apply or cancel the pending point edit first');draft.replace(scene);blocked=false;choices();changed('JSON paths applied.');},
+    adopt(scene,message='JSON paths applied.'){if(pending||drag)throw Error('Apply or cancel the pending point edit first');draft.replace(scene);blocked=false;choices();changed(message);},
+    verified(){status('Current source paths are compiled.');},
     cancel, getState:()=>({selected:point(),pending,blocked,dragging:!!drag,viewBox:box?.slice(),scene:draft?.get()})
   };
 }
