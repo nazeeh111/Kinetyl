@@ -13,7 +13,7 @@ ASSETS=Path(__file__).with_name("assets")
 
 def parser():
     result=argparse.ArgumentParser(description="Keep labels readable throughout supported animation paths.")
-    result.add_argument("--version",action="version",version="0.3.0")
+    result.add_argument("--version",action="version",version="0.3.1")
     commands=result.add_subparsers(dest="command",required=True)
     sample=commands.add_parser("example",help="Write a bundled editable example to a new directory")
     sample.add_argument("name",choices=["eigenvalue-crossing","three-streams","curved-crossing"])

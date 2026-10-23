@@ -22,10 +22,10 @@ The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: t
 
 Python 3.11+. The compiler, verifier and exported browser studio need no runtime dependencies or paid service.
 
-The `v0.3.0` wheel and ZIP are frozen release artifacts. The hosted studio and `main` include later status and first-use presentation changes; install from a new release when those changes are packaged.
+The `v0.3.1` wheel and studio ZIP include the current first-use comparison and canvas status fix. The existing `v0.3.0` artifacts remain frozen at their tagged source.
 
 ```sh
-python -m pip install /path/to/kinetyl-0.3.0-py3-none-any.whl
+python -m pip install /path/to/kinetyl-0.3.1-py3-none-any.whl
 kinetyl example curved-crossing --out examples
 kinetyl compile examples/curved-crossing.scene.json --out compiled
 kinetyl verify compiled/plan.json
@@ -38,7 +38,7 @@ Open `http://localhost:8000`. Each output command requires a new destination and
 For your own text and an actual MP4, install the optional pinned renderer:
 
 ```sh
-python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.3.0-py3-none-any.whl'
+python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.3.1-py3-none-any.whl'
 kinetyl measure examples/curved-crossing.intent.json --out measured
 kinetyl compile measured/scene.json --out planned
 kinetyl render planned/plan.json --out video
