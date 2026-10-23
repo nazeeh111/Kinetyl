@@ -118,6 +118,8 @@ export function createStudio(doc, dependencies = {}) {
   function downloads() {
     el['save-plan'].disabled = dirty || !plan;
     el['save-scene'].disabled = dirty || !plan;
+    const recover = doc.getElementById('restore-verified');
+    if (recover) recover.disabled = !dirty || !plan;
   }
   function stop() {
     playing = false; startTime = null;
@@ -253,7 +255,7 @@ export function createStudio(doc, dependencies = {}) {
     } catch (error) {
       if (revision !== epoch) return false;
       write('status-title', error instanceof NoSolution ? 'No layout in this family' : error instanceof SearchBudgetExceeded ? 'Search is inconclusive' : 'Input refused');
-      write('status-detail', error.message); write('edit-status', 'No new verified plan. Edit the paths or restore the original.');
+      write('status-detail', error.message); write('edit-status', 'No new verified plan. Correct the draft or return to the last compiled edit.');
       notice(scene ? 'Previous document retained for recovery. Downloads remain disabled.' : 'No verified document loaded.');
       draw(); return false;
     }
@@ -274,7 +276,7 @@ export function createStudio(doc, dependencies = {}) {
     } catch (error) {
       if (revision !== epoch) return false;
       write('status-title', 'Import refused'); write('status-detail', error.message);
-      notice(scene ? 'Previous document retained for recovery. Restore original to re-enable its downloads.' : 'Import a supported measured scene or independently valid plan.'); draw(); return false;
+      notice(scene ? 'Previous document retained. Return to last compiled edit to recover its paths and downloads.' : 'Import a supported measured scene or independently valid plan.'); draw(); return false;
     }
   }
   function emitDownload(value, filename) {
@@ -292,6 +294,16 @@ export function createStudio(doc, dependencies = {}) {
     catch (error) { invalidate('Edited paths were refused: ' + error.message); write('edit-status', error.message); draw(); }
   });
   el.restore.addEventListener('click', async () => { if (original) {authoring?.cancel();const restored=await compile(original);if(restored)authoring?.load(scene,true);} });
+  doc.getElementById('restore-verified')?.addEventListener('click', () => {
+    if (!plan || !dirty) return;
+    // Supersede any solve/import still in flight. The retained plan already
+    // passed verification; preserve the separate imported-original identity.
+    epoch++;
+    authoring?.cancel();
+    accept(plan);
+    authoring?.load(scene, true);
+    write('edit-status', 'Last compiled edit restored. Pending draft changes discarded; verified downloads are ready.');
+  });
   doc.getElementById('json-apply')?.addEventListener('click',()=>{if(!scene&&!authoring?.get())return;try{const next=editedScene(authoring?.get()??scene,el.paths.value);authoring?.adopt(next);jsonPending=false;write('edit-status','JSON applied to visual draft. Compile to verify.');}catch(error){write('edit-status','JSON refused: '+error.message);}});
   doc.getElementById('json-discard')?.addEventListener('click',()=>{const next=authoring?.get();if(!next)return;el.paths.value=JSON.stringify(pathRows(next),null,2);jsonPending=false;authoring.unblock();invalidate('JSON text discarded. Visual draft retained; compile to verify.');draw();});
   el.aspect.addEventListener('change', async () => {
@@ -339,7 +351,7 @@ export function createStudio(doc, dependencies = {}) {
       await loadDocument(parseDocument(text));
     } catch (error) {
       if (revision !== epoch) return;
-      write('status-title', 'Import refused'); write('status-detail', error.message); notice('Previous document retained. Restore original to recover.'); draw();
+      write('status-title', 'Import refused'); write('status-detail', error.message); notice('Previous document retained. Return to last compiled edit to recover.'); draw();
     } finally { el.file.value = ''; }
   });
   async function start() {

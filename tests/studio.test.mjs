@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createStudio, editedScene, glyphPath, pointAt, trajectoryPath, number, parseDocument} from '../src/kinetyl/assets/studio.mjs';
 import {compileScene, verifyPlan, normalizeScene, inspectLayout, NoSolution, SearchBudgetExceeded} from '../src/kinetyl/assets/geometry.mjs';
 
-const IDS = ['proof-before', 'proof-compiled', 'proof-title', 'proof-status', 'proof-before-title', 'proof-after-title', 'stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
+const IDS = ['proof-before', 'proof-compiled', 'proof-title', 'proof-status', 'proof-before-title', 'proof-after-title', 'stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'restore-verified', 'edit-status'];
 class FakeElement {
   constructor(tag = 'div') {
     this.tagName = tag; this.children = []; this.attributes = new Map(); this.listeners = new Map();
@@ -374,4 +374,41 @@ test('cubic editor, path preview, aspect change and downloads preserve actual co
   h.el.paths.value = JSON.stringify(bad); await h.el.paths.emit('input'); await h.el.apply.click();
   assert.equal(h.el['save-plan'].disabled, true);
   assert.deepEqual(h.studio.getState().scene, h.downloads[0].value.scene);
+});
+
+
+test('recovery restores the last compiled edit while preserving the imported-original action', async () => {
+  const h = harness();
+  await h.studio.loadDocument(scene());
+  const imported = h.studio.getState().scene;
+  const edited = structuredClone(imported);
+  edited.nodes[0].keyframes[0][1] = '-3/2';
+  assert.equal(await h.studio.compile(edited), true);
+  const compiled = h.studio.getState().plan;
+  assert.equal(h.el['restore-verified'].disabled, true);
+  h.el.paths.value = '[invalid'; await h.el.paths.emit('input'); await h.el.apply.click();
+  assert.equal(h.el['restore-verified'].disabled, false);
+  await h.el['restore-verified'].click();
+  assert.deepEqual(h.studio.getState().plan, compiled);
+  assert.equal(h.studio.getState().dirty, false);
+  assert.equal(h.el['restore-verified'].disabled, true);
+  await h.el['save-plan'].click();
+  assert.deepEqual(h.downloads[0].value, compiled);
+  await h.el.restore.click();
+  assert.deepEqual(h.studio.getState().scene, imported);
+});
+
+test('recovery supersedes a pending compile so its late result cannot replace the recovered edit', async () => {
+  const gate = deferred(); let pending = false;
+  const h = harness({compileScene: async next => { if (pending) await gate.promise; return compileScene(next); }});
+  await h.studio.loadDocument(scene());
+  const compiled = h.studio.getState().plan;
+  const next = structuredClone(compiled.scene); next.nodes[0].keyframes[0][1] = '-3/2';
+  pending = true;
+  const solving = h.studio.compile(next);
+  await h.el['restore-verified'].click();
+  gate.resolve();
+  assert.equal(await solving, false);
+  assert.deepEqual(h.studio.getState().plan, compiled);
+  assert.equal(h.studio.getState().dirty, false);
 });
