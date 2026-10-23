@@ -6,7 +6,9 @@ Labels collide between keyframes. Portrait crops erase important points. Kinetyl
 
 [Open the studio](https://nazeeh111.github.io/Kinetyl/) · [Download](https://github.com/nazeeh111/Kinetyl/releases) · [Scene format](SCHEMAS.md)
 
-![Kinetyl at 3.00 seconds: Alpha and Beta overlap before compilation, then separate on the same crossing paths](docs/images/first-use.png)
+[![Watch the 16-second Kinetyl walkthrough: the same crossing motion, with overlapping labels before compilation and separated labels afterward](docs/images/launch.jpg)](https://github.com/nazeeh111/Kinetyl/blob/main/docs/launch.mp4)
+
+[Watch the 16-second walkthrough](https://github.com/nazeeh111/Kinetyl/blob/main/docs/launch.mp4) · [Film sources and scope](docs/launch-film.md).
 
 The first view uses the bundled, independently checked curved-crossing plan. The two browser drawings show the same source paths and time, with the labels in their before and compiled positions. They represent declared geometry; native video validation is separate.
 
