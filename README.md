@@ -6,17 +6,23 @@ Labels collide between keyframes. Portrait crops erase important points. Kinetyl
 
 [Open the studio](https://nazeeh111.github.io/Kinetyl/) · [Download](https://github.com/nazeeh111/Kinetyl/releases) · [Scene format](SCHEMAS.md)
 
-![Kinetyl exact path authoring, showing a selected Bézier control and its exact coordinates](docs/images/authoring.jpg)
+![Kinetyl at 3.00 seconds: Alpha and Beta overlap before compilation, then separate on the same crossing paths](docs/images/first-use.png)
+
+The first view uses the bundled, independently checked curved-crossing plan. The two browser drawings show the same source paths and time, with the labels in their before and compiled positions. They represent declared geometry; native video validation is separate.
+
+![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring.jpg)
 
 The studio now has a linked world-path editor. Enable **Edit paths**, choose an endpoint or Bézier control, and drag on the visible 1/20-unit grid or enter exact fractions. Arrow keys move one axis; cancel, undo and redo retain exact source values. Compile the draft, switch canvas, then save and reopen the verified plan. [Authoring and recovery](docs/authoring.md).
 
-The default studio shows two cubic trajectories sharing an arch. Use **Before / Compiled**, **Jump to collision**, then switch to **9:16**. The curves and event times stay fixed while labels and camera framing adapt. [Try or author curved motion](docs/curved-motion.md). Actual exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
+The default studio shows two cubic trajectories sharing an arch. Compare the collision at **3.00 s** at the top, then use **Inspect the timeline** to switch **Before / Compiled** or change to **9:16**. The curves and event times stay fixed while labels and camera framing adapt. [Try or author curved motion](docs/curved-motion.md). Actual exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
 
 The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: two branches cross and the determinant follows five sampled values. Try **Jump to collision**, switch **Before / Compiled**, then change the canvas to **9:16**. The mathematical coordinates stay the same. The determinant is a piecewise linear approximation between its samples, not a continuous quadratic simulation. Its original [wide](docs/native/wide.mp4) and [portrait](docs/native/portrait.mp4) native exports remain available with their [wide](docs/native/wide.json) and [portrait](docs/native/portrait.json) receipts.
 
 ## Use it
 
 Python 3.11+. The compiler, verifier and exported browser studio need no runtime dependencies or paid service.
+
+The `v0.3.0` wheel and ZIP are frozen release artifacts. The hosted studio and `main` include later status and first-use presentation changes; install from a new release when those changes are packaged.
 
 ```sh
 python -m pip install /path/to/kinetyl-0.3.0-py3-none-any.whl

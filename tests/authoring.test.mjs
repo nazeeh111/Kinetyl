@@ -3,7 +3,7 @@ import test from 'node:test';
 import {createStudio, editedScene, glyphPath, pointAt, trajectoryPath, number, parseDocument} from '../src/kinetyl/assets/studio.mjs';
 import {compileScene, verifyPlan, normalizeScene, NoSolution, SearchBudgetExceeded} from '../src/kinetyl/assets/geometry.mjs';
 
-const IDS = ['author-stage','point','point-x','point-y','point-apply','point-cancel','path-undo','path-redo','author-mode','author-status','author-fit','json-apply','json-discard','save-draft','stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
+const IDS = ['author-stage','point','point-x','point-y','point-apply','point-cancel','path-undo','path-redo','author-mode','author-status','author-fit','json-apply','json-discard','save-draft','proof-before','proof-compiled','proof-title','proof-status','proof-before-title','proof-after-title','stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
 class FakeElement {
   constructor(tag = 'div') {
     this.tagName = tag; this.children = []; this.attributes = new Map(); this.listeners = new Map();
@@ -30,7 +30,7 @@ class FakeElement {
   click() { return this.disabled ? Promise.resolve([]) : this.emit('click'); }
 }
 class FakeDocument {
-  constructor() { this.elements = Object.fromEntries(IDS.map(id => [id, new FakeElement(id === 'stage' ? 'svg' : 'div')])); this.body = new FakeElement('body'); this.elements.time.value = '0'; this.elements.aspect.value = 'wide'; }
+  constructor() { this.elements = Object.fromEntries(IDS.map(id => [id, new FakeElement(['stage','proof-before','proof-compiled'].includes(id) ? 'svg' : 'div')])); this.body = new FakeElement('body'); this.elements.time.value = '0'; this.elements.aspect.value = 'wide'; }
   getElementById(id) { return this.elements[id]; }
   createElement(tag) { return new FakeElement(tag); }
   createElementNS(_ns, tag) { return new FakeElement(tag); }

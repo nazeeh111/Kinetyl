@@ -103,7 +103,7 @@ export function createStudio(doc, dependencies = {}) {
   const raf = dependencies.requestAnimationFrame ?? globalThis.requestAnimationFrame?.bind(globalThis);
   const caf = dependencies.cancelAnimationFrame ?? globalThis.cancelAnimationFrame?.bind(globalThis);
   const fetcher = dependencies.fetch ?? globalThis.fetch?.bind(globalThis);
-  const ids = ['stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
+  const ids = ['stage', 'proof-before', 'proof-compiled', 'proof-title', 'proof-status', 'proof-before-title', 'proof-after-title', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
   const el = Object.fromEntries(ids.map(id => [id, doc.getElementById(id)]));
   let scene = null, plan = null, original = null, baseline = null, dirty = true;
   let mode = 'compiled', epoch = 0, playing = false, frame = null, startTime = null;
@@ -128,21 +128,20 @@ export function createStudio(doc, dependencies = {}) {
     epoch++; dirty = true; downloads(); stop();
     write('status-title', 'Changes need compilation'); write('status-detail', message);
     write('edit-status', 'Downloads paused until the current paths are compiled and verified.');
+    write('proof-status', 'Previous verified document shown. Compile the draft to refresh this comparison.');
   }
-  function svg(tag, attributes = {}, parent = el.stage) {
-    const node = doc.createElementNS(ns, tag);
-    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
-    parent.appendChild(node); return node;
-  }
-  function draw() {
-    el.stage.replaceChildren();
-    if (!scene || !plan) return;
-    const time = Math.max(0, Math.min(number(scene.duration), Number(el.time.value)));
-    const scale = number(mode === 'before' ? baseline.camera_scale : plan.layout.camera_scale);
+  function render(target, renderingMode, time, bounds = false, detailView = null) {
+    target.replaceChildren();
+    const svg = (tag, attributes = {}, parent = target) => {
+      const node = doc.createElementNS(ns, tag);
+      for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
+      parent.appendChild(node); return node;
+    };
+    const scale = number(renderingMode === 'before' ? baseline.camera_scale : plan.layout.camera_scale);
     const halfW = 4 * scene.export.width / scene.export.height;
-    el.stage.setAttribute('viewBox', `${-halfW} -4 ${halfW * 2} 8`);
-    el.stage.classList.toggle('portrait', scene.export.width < scene.export.height);
-    el.stage.classList.toggle('square', scene.export.width === scene.export.height);
+    target.setAttribute('viewBox', detailView?.box?.join(' ') ?? `${-halfW} -4 ${halfW * 2} 8`);
+    target.classList.toggle('portrait', !detailView && scene.export.width < scene.export.height);
+    target.classList.toggle('square', !detailView && scene.export.width === scene.export.height);
     const world = svg('g', {transform: 'scale(1,-1)'});
     // Grid is presentation geometry, capped even for tiny valid camera scales.
     const gridStep = Math.max(1, Math.ceil(halfW / 12));
@@ -152,7 +151,7 @@ export function createStudio(doc, dependencies = {}) {
       const color=['#1d4ed8','#a21caf','#0f766e','#b45309'][i%4];
       const [wx, wy] = pointAt(node.keyframes, time, node.controls), x = wx * scale, y = wy * scale;
       const hx = number(node.envelope.width) / 2, hy = number(node.envelope.height) / 2, r = number(node.radius);
-      const offset = mode === 'before' ? [0, hy + r + number(scene.margin)] : [number(plan.layout.offsets[i].x), number(plan.layout.offsets[i].y)];
+      const offset = renderingMode === 'before' ? [0, hy + r + number(scene.margin)] : [number(plan.layout.offsets[i].x), number(plan.layout.offsets[i].y)];
       svg('path', {d: trajectoryPath(node, scale), fill: 'none', stroke: color, opacity: .25, 'stroke-width': .023, 'stroke-dasharray': '.06 .10'}, world);
       svg('line', {x1: x, y1: y, x2: x + offset[0], y2: y + offset[1], stroke: color, opacity: .38, 'stroke-width': .014}, world);
       svg('rect', {x: x - r, y: y - r, width: 2 * r, height: 2 * r, fill: color}, world);
@@ -162,14 +161,60 @@ export function createStudio(doc, dependencies = {}) {
         const text = svg('text', {transform: 'scale(1,-1)', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': Math.min(.36, hy * 1.5), fill: color}, label);
         text.textContent = node.text;
       }
-      if (el.envelopes.checked) {
+      if (bounds) {
         svg('rect', {x: -hx, y: -hy, width: 2 * hx, height: 2 * hy, fill: 'none', stroke: color, opacity: .7, 'stroke-width': .012}, label);
         svg('rect', {x: x - r, y: y - r, width: 2 * r, height: 2 * r, fill: 'none', stroke: '#fff', 'stroke-width': .01}, world);
       }
     });
+  }
+  function draw() {
+    if (!scene || !plan) { el.stage.replaceChildren(); return; }
+    const time = Math.max(0, Math.min(number(scene.duration), Number(el.time.value)));
+    render(el.stage, mode, time, el.envelopes.checked);
     write('time-label', `${time.toFixed(2)} s`);
     write('scale-label', `CAMERA × ${mode === 'before' ? baseline.camera_scale : plan.layout.camera_scale}`);
     write('stage-label', `${dirty ? 'Previous document · ' : ''}${mode === 'before' ? 'Before: all labels above their marker' : 'Compiled: declared geometry preview'}`);
+  }
+  function proofView(renderingMode, time, involved) {
+    if (!involved.length) return null;
+    const scale = number(renderingMode === 'before' ? baseline.camera_scale : plan.layout.camera_scale);
+    const halfW = 4 * scene.export.width / scene.export.height;
+    const points = [], extents = [];
+    for (const node of involved) {
+      const i = scene.nodes.findIndex(row => row.id === node.id);
+      const [wx, wy] = pointAt(node.keyframes, time, node.controls);
+      const x = wx * scale, y = wy * scale;
+      const hx = number(node.envelope.width) / 2, hy = number(node.envelope.height) / 2, r = number(node.radius);
+      const [ox, oy] = renderingMode === 'before' ? [0, hy + r + number(scene.margin)] : [number(plan.layout.offsets[i].x), number(plan.layout.offsets[i].y)];
+      points.push([x, y]);
+      extents.push([x-r, y-r, x+r, y+r], [x+ox-hx, y+oy-hy, x+ox+hx, y+oy+hy]);
+    }
+    const [anchorX, anchorY] = points.reduce((sum, point) => [sum[0]+point[0]/points.length, sum[1]+point[1]/points.length], [0, 0]);
+    const left = Math.min(...extents.map(e => e[0])), bottom = Math.min(...extents.map(e => e[1]));
+    const right = Math.max(...extents.map(e => e[2])), top = Math.max(...extents.map(e => e[3]));
+    const ratio = 13/6, pad = .3;
+    const width = Math.max(5.2, 2*(Math.max(anchorX-left, right-anchorX)+pad), ratio*2*(Math.max(anchorY-bottom, top-anchorY)+pad));
+    const height = width/ratio;
+    const outside = left < -halfW || right > halfW || bottom < -4 || top > 4;
+    if (!outside && (width > 2*halfW || height > 8)) return {box: [-halfW, -4, 2*halfW, 8], outside: false};
+    const centerX = outside ? anchorX : Math.max(-halfW+width/2, Math.min(halfW-width/2, anchorX));
+    const centerY = outside ? anchorY : Math.max(-4+height/2, Math.min(4-height/2, anchorY));
+    return {box: [centerX-width/2, -centerY-height/2, width, height], outside};
+  }
+  function drawProof() {
+    if (!scene || !plan) return;
+    const conflict = baseline.collisions[0];
+    const time = conflict ? number(conflict.time) : number(scene.duration) / 2;
+    const involved = conflict?.node_ids?.map(id => scene.nodes.find(node => node.id === id)).filter(Boolean) ?? [];
+    const beforeView = proofView('before', time, involved), compiledView = proofView('compiled', time, involved);
+    render(el['proof-before'], 'before', time, false, beforeView);
+    render(el['proof-compiled'], 'compiled', time, false, compiledView);
+    write('proof-title', `${conflict ? (conflict.kind === 'label-label' ? 'The crossing' : 'The first overlap') : 'Compare placements'} at ${time.toFixed(2)} s`);
+    write('proof-before-title', conflict ? (conflict.kind === 'label-label' ? 'Labels collide' : 'Placement overlaps') : 'Before placement');
+    write('proof-after-title', conflict ? (conflict.kind === 'label-label' ? 'Labels separate' : 'Placement clears') : 'Compiled placement');
+    write('proof-status', `${conflict ? 'Before overlaps; compiled geometry passes the declared full-trajectory checks.' : 'No before-placement collision in this document; compare the same moment and paths.'}${beforeView?.outside || compiledView?.outside ? ' Detail includes geometry outside the declared canvas.' : ''}${dirty ? ' Previous verified document shown; compile the draft to refresh.' : ''}`);
+    el['proof-before'].setAttribute('aria-label', `Before placement at ${time.toFixed(2)} seconds${conflict ? ', with an overlap' : ''}`);
+    el['proof-compiled'].setAttribute('aria-label', `Compiled placement at the same ${time.toFixed(2)} seconds`);
   }
   function metrics() {
     el.metrics.replaceChildren();
@@ -194,10 +239,11 @@ export function createStudio(doc, dependencies = {}) {
     if (scene.nodes.some(n => !n.envelope.glyph_paths.length)) notice('Some labels have no native outline. Fallback text is illustrative; only the declared rectangles are checked.');
     const sceneNote = doc.getElementById('scene-note');
     if (sceneNote) sceneNote.textContent = scene.schema.endsWith('/2') ? 'Cubic paths preserve their control points and segment times. Switch Before / Compiled, then change the aspect ratio. Labels keep their measured size.' : 'Piecewise linear motion. World paths and event times stay fixed while label placement and camera scale change.';
-    metrics(); draw();
+    metrics(); draw(); drawProof();
   }
   async function compile(next, first = false) {
     const revision = ++epoch; dirty = true; downloads(); stop();
+    write('proof-status', 'Previous verified document shown while the new layout is checked.');
     write('status-title', 'Solving the declared layout…'); write('status-detail', 'World paths and event times stay fixed. Searching permitted offsets and camera scales.');
     try {
       const result = await solve(next);
@@ -214,6 +260,7 @@ export function createStudio(doc, dependencies = {}) {
   }
   async function loadDocument(data) {
     const revision = ++epoch; dirty = true; downloads(); stop();
+    write('proof-status', 'Previous verified document shown while the import is checked.');
     try {
       if (['kinetyl-plan/1', 'kinetyl-plan/2'].includes(data?.schema)) {
         await verify(data);

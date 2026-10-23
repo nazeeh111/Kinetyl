@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import {createStudio, editedScene, glyphPath, pointAt, trajectoryPath, number, parseDocument} from '../src/kinetyl/assets/studio.mjs';
-import {compileScene, verifyPlan, normalizeScene, NoSolution, SearchBudgetExceeded} from '../src/kinetyl/assets/geometry.mjs';
+import {compileScene, verifyPlan, normalizeScene, inspectLayout, NoSolution, SearchBudgetExceeded} from '../src/kinetyl/assets/geometry.mjs';
 
-const IDS = ['stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
+const IDS = ['proof-before', 'proof-compiled', 'proof-title', 'proof-status', 'proof-before-title', 'proof-after-title', 'stage', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
 class FakeElement {
   constructor(tag = 'div') {
     this.tagName = tag; this.children = []; this.attributes = new Map(); this.listeners = new Map();
@@ -23,7 +24,7 @@ class FakeElement {
   click() { return this.disabled ? Promise.resolve([]) : this.emit('click'); }
 }
 class FakeDocument {
-  constructor() { this.elements = Object.fromEntries(IDS.map(id => [id, new FakeElement(id === 'stage' ? 'svg' : 'div')])); this.body = new FakeElement('body'); this.elements.time.value = '0'; this.elements.aspect.value = 'wide'; }
+  constructor() { this.elements = Object.fromEntries(IDS.map(id => [id, new FakeElement(['stage','proof-before','proof-compiled'].includes(id) ? 'svg' : 'div')])); this.body = new FakeElement('body'); this.elements.time.value = '0'; this.elements.aspect.value = 'wide'; }
   getElementById(id) { return this.elements[id]; }
   createElement(tag) { return new FakeElement(tag); }
   createElementNS(_ns, tag) { return new FakeElement(tag); }
@@ -47,6 +48,86 @@ function harness(overrides = {}) {
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return {promise, resolve, reject}; }
 const turn = () => new Promise(resolve => setImmediate(resolve));
 function descendants(node) { return [node, ...node.children.flatMap(descendants)]; }
+
+test('first-use proof shows the bundled 3.00 s collision and keeps the authored preview controls independent', async () => {
+  const bundled = JSON.parse(readFileSync(new URL('../docs/plan.json', import.meta.url), 'utf8'));
+  const h = harness();
+  assert.equal(await h.studio.loadDocument(bundled), true);
+  assert.equal(h.el['proof-title'].textContent, 'The crossing at 3.00 s');
+  for (const id of ['proof-before', 'proof-compiled']) {
+    const box = h.el[id].getAttribute('viewBox').split(' ').map(Number);
+    for (let i = 0; i < 4; i++) assert.ok(Math.abs(box[i]-[-2.6,-2.45,5.2,2.4][i]) < 1e-12);
+  }
+  assert.match(h.el['proof-status'].textContent, /full-trajectory checks/);
+  assert.equal(h.el.time.value, '0');
+  assert.equal(h.studio.getState().mode, 'compiled');
+  const paths = id => descendants(h.el[id]).filter(n => n.tagName === 'path' && n.getAttribute('fill-rule') === 'nonzero');
+  assert.equal(paths('proof-before').length, 3);
+  assert.equal(paths('proof-compiled').length, 3);
+  assert.notDeepEqual(paths('proof-before').map(n => n.parentNode.getAttribute('transform')), paths('proof-compiled').map(n => n.parentNode.getAttribute('transform')));
+  assert.deepEqual(h.studio.getState().scene.nodes.map(n => n.keyframes), bundled.scene.nodes.map(n => n.keyframes));
+  h.el.paths.value += ' ';
+  await h.el.paths.emit('input');
+  assert.match(h.el['proof-status'].textContent, /Previous verified document/);
+  assert.equal(h.el['save-plan'].disabled, true);
+});
+
+test('imported proof crop follows the projected camera point when scale is below one', async () => {
+  const source = scene();
+  source.camera_scales = ['2/5'];
+  source.nodes.forEach(node => node.keyframes.forEach(frame => { frame[1] += 6; }));
+  const plan = await compileScene(source);
+  assert.equal(plan.layout.camera_scale, '2/5');
+  assert.equal((await verifyPlan(plan)).valid, true);
+  const h = harness();
+  assert.equal(await h.studio.loadDocument(plan), true);
+  const worldX = pointAt(plan.scene.nodes[0].keyframes, 1.5)[0];
+  assert.equal(worldX, 6);
+  for (const id of ['proof-before', 'proof-compiled']) {
+    const [left, , width] = h.el[id].getAttribute('viewBox').split(' ').map(Number);
+    assert.equal(left + width / 2, worldX * number(plan.layout.camera_scale));
+    assert.ok(left <= worldX * number(plan.layout.camera_scale) && worldX * number(plan.layout.camera_scale) <= left + width);
+  }
+});
+
+test('imported marker overlap uses neutral proof copy instead of claiming two labels collided', async () => {
+  const source = scene();
+  source.nodes[0].keyframes = [[0, 0, 0], [3, 0, 0]];
+  source.nodes[1].keyframes = [[0, 1, '9/20'], [3, 1, '9/20']];
+  const plan = await compileScene(source);
+  assert.equal((await verifyPlan(plan)).valid, true);
+  assert.equal(inspectLayout(plan.scene).collisions[0].kind, 'label-dot');
+  const h = harness();
+  assert.equal(await h.studio.loadDocument(plan), true);
+  assert.equal(h.el['proof-title'].textContent, 'The first overlap at 1.50 s');
+  assert.equal(h.el['proof-before-title'].textContent, 'Placement overlaps');
+  assert.equal(h.el['proof-after-title'].textContent, 'Placement clears');
+});
+
+test('verified wide imported labels remain visible in the compiled proof crop', async () => {
+  const source = scene();
+  source.camera_scales = [1];
+  source.nodes.forEach(node => {
+    node.keyframes = [[0, 0, '7/2'], [3, 0, '7/2']];
+    node.envelope.width = '6';
+  });
+  const plan = await compileScene(source);
+  assert.equal((await verifyPlan(plan)).valid, true);
+  assert.deepEqual(plan.layout.offsets.map(row => row.x), ['13/4', '-13/4']);
+  const h = harness();
+  assert.equal(await h.studio.loadDocument(plan), true);
+  const [x0, y0, width, height] = h.el['proof-compiled'].getAttribute('viewBox').split(' ').map(Number);
+  for (let i = 0; i < plan.scene.nodes.length; i++) {
+    const node = plan.scene.nodes[i], center = pointAt(node.keyframes, 1.5);
+    const x = center[0]*number(plan.layout.camera_scale)+number(plan.layout.offsets[i].x);
+    const y = center[1]*number(plan.layout.camera_scale)+number(plan.layout.offsets[i].y);
+    const hx = number(node.envelope.width)/2, hy = number(node.envelope.height)/2;
+    assert.ok(x-hx >= x0 && x+hx <= x0+width, `${node.id} label fits proof width`);
+    assert.ok(y-hy >= -(y0+height) && y+hy <= -y0, `${node.id} label fits proof height`);
+    assert.ok(center[0] >= x0 && center[0] <= x0+width, `${node.id} marker fits proof width`);
+  }
+  assert.match(h.el['proof-status'].textContent, /outside the declared canvas/);
+});
 
 test('bundled plan is independently checked before controls enable or downloads emit', async () => {
   const plan = await compileScene(scene()), verificationGate = deferred(), verified = [];
