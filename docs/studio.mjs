@@ -105,6 +105,13 @@ export function createStudio(doc, dependencies = {}) {
   const fetcher = dependencies.fetch ?? globalThis.fetch?.bind(globalThis);
   const ids = ['stage', 'proof-before', 'proof-compiled', 'proof-title', 'proof-status', 'proof-before-title', 'proof-after-title', 'repaired', 'original', 'aspect', 'envelopes', 'stage-label', 'scale-label', 'play', 'time', 'time-label', 'witness', 'status-title', 'status-detail', 'metrics', 'notice', 'save-plan', 'save-scene', 'load', 'file', 'paths', 'apply', 'restore', 'edit-status'];
   const el = Object.fromEntries(ids.map(id => [id, doc.getElementById(id)]));
+  const viewport = doc.getElementById('stage-viewport');
+  function centerCanvas() {
+    if (viewport) viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
+  }
+  // Recenter only for a new framing or viewport width. Scrubbing and placement
+  // toggles retain the visitor's horizontal inspection position.
+  if (viewport && globalThis.ResizeObserver) new ResizeObserver(centerCanvas).observe(viewport);
   let scene = null, plan = null, original = null, baseline = null, dirty = true;
   let mode = 'compiled', epoch = 0, playing = false, frame = null, startTime = null;
   const ns = 'http://www.w3.org/2000/svg';
@@ -241,9 +248,9 @@ export function createStudio(doc, dependencies = {}) {
     if (scene.nodes.some(n => !n.envelope.glyph_paths.length)) notice('Some labels have no native outline. Fallback text is illustrative; only the declared rectangles are checked.');
     const sceneNote = doc.getElementById('scene-note');
     if (sceneNote) sceneNote.textContent = scene.schema.endsWith('/2') ? 'Cubic paths preserve their control points and segment times. Switch Before / Compiled, then change the aspect ratio. Labels keep their measured size.' : 'Piecewise linear motion. World paths and event times stay fixed while label placement and camera scale change.';
-    metrics(); draw(); drawProof();
+    metrics(); draw(); centerCanvas(); drawProof();
   }
-  async function compile(next, first = false) {
+  async function compile(next, first = false, retainTime = false) {
     const revision = ++epoch; dirty = true; downloads(); stop();
     write('proof-status', 'Previous verified document shown while the new layout is checked.');
     write('status-title', 'Solving the declared layout…'); write('status-detail', 'World paths and event times stay fixed. Searching permitted offsets and camera scales.');
@@ -251,7 +258,13 @@ export function createStudio(doc, dependencies = {}) {
       const result = await solve(next);
       await verify(result);
       if (revision !== epoch) return false;
-      accept(result, first); return true;
+      const inspectedTime = Number(el.time.value);
+      accept(result, first);
+      if (retainTime) {
+        el.time.value = String(Math.max(0, Math.min(number(scene.duration), inspectedTime)));
+        draw();
+      }
+      return true;
     } catch (error) {
       if (revision !== epoch) return false;
       write('status-title', error instanceof NoSolution ? 'No layout in this family' : error instanceof SearchBudgetExceeded ? 'Search is inconclusive' : 'Input refused');
@@ -314,7 +327,7 @@ export function createStudio(doc, dependencies = {}) {
       const next = editedScene(authoring?.get()??scene, el.paths.value);
       const sizes = {wide: [960, 540], portrait: [540, 960], square: [720, 720]};
       const size = sizes[el.aspect.value]; if (!size) throw new Error('Unsupported canvas aspect');
-      [next.export.width, next.export.height] = size;authoring?.adopt(next,'Canvas changed.');await compile(next);
+      [next.export.width, next.export.height] = size;authoring?.adopt(next,'Canvas changed.');await compile(next, false, true);
     } catch (error) { invalidate('Canvas change refused: ' + error.message); draw(); }
   });
   for (const [id, next] of [['original', 'before'], ['repaired', 'compiled']]) el[id].addEventListener('click', () => {

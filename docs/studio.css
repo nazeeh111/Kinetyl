@@ -16,3 +16,21 @@
 .proof-footnote{font-size:12px;color:var(--muted);margin:9px 0 0}
 @media(max-width:720px){.proof-heading{align-items:start;flex-direction:column}.proof-actions{gap:14px}.proof-grid{grid-template-columns:1fr}.proof-grid svg{aspect-ratio:16/6}}
 @media(max-width:430px){.proof{margin-bottom:22px}.proof-grid{gap:9px}.proof-grid figcaption{padding:7px 9px}.proof-grid svg{aspect-ratio:16/5}.proof-footnote{font-size:11px}}
+
+
+/* Keep the measured wide-canvas labels readable without changing their geometry. */
+.stage-viewport{width:100%;min-width:0;overflow-x:auto}
+.stage-viewport:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+#stage{margin-inline:auto}
+.canvas-navigation{display:none}
+@media(max-width:720px){
+  .stage-shell{min-height:0;display:block}
+  #stage:not(.portrait):not(.square){min-width:720px}
+  .stage-caption{position:static;flex-wrap:wrap;padding:9px 0;font-size:11px}
+  .canvas-navigation{display:block;margin:5px 0 0;font-size:12px;line-height:1.5;color:var(--muted)}
+  .stage-column:has(#stage.portrait) .canvas-navigation,.stage-column:has(#stage.square) .canvas-navigation{display:none}
+  .transport{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:10px}
+  .timeline-label{min-width:0}
+  .timeline-label input{min-width:0}
+  #witness{grid-column:2/4;justify-self:end;margin:0}
+}

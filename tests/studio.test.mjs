@@ -412,3 +412,42 @@ test('recovery supersedes a pending compile so its late result cannot replace th
   assert.deepEqual(h.studio.getState().plan, compiled);
   assert.equal(h.studio.getState().dirty, false);
 });
+
+
+test('canvas change retains inspected time, including a scrub during solving; ordinary compile/import/reset still start at zero', async () => {
+  let gate = null;
+  const h = harness({compileScene: async next => { if (gate) await gate.promise; return compileScene(next); }});
+  await h.studio.loadDocument(scene());
+  h.el.time.value = '1.5'; await h.el.time.emit('input');
+  h.el.aspect.value = 'portrait'; await h.el.aspect.emit('change');
+  assert.equal(h.el.time.value, '1.5'); assert.equal(h.el['time-label'].textContent, '1.50 s');
+  gate = deferred(); h.el.aspect.value = 'square'; const pending = h.el.aspect.emit('change');
+  h.el.time.value = '2.25'; await h.el.time.emit('input'); gate.resolve(); await pending; gate = null;
+  assert.equal(h.el.time.value, '2.25');
+  await h.el.apply.click(); assert.equal(h.el.time.value, '0');
+  h.el.time.value = '2'; await h.studio.loadDocument(scene()); assert.equal(h.el.time.value, '0');
+  h.el.time.value = '2'; await h.el.restore.click(); assert.equal(h.el.time.value, '0');
+});
+
+test('superseded canvas solve cannot restore its inspected time over a newer import', async () => {
+  let gate = null;
+  const h = harness({compileScene: async next => { if (gate) await gate.promise; return compileScene(next); }});
+  await h.studio.loadDocument(scene());
+  h.el.time.value = '2'; gate = deferred(); h.el.aspect.value = 'portrait';
+  const pending = h.el.aspect.emit('change'), oldGate = gate; gate = null;
+  const newer = scene(); newer.nodes[0].text = 'New import'; await h.studio.loadDocument(newer);
+  h.el.time.value = '0.75'; await h.el.time.emit('input'); oldGate.resolve(); await pending;
+  assert.equal(h.el.time.value, '0.75'); assert.equal(h.studio.getState().scene.nodes[0].text, 'New import');
+});
+
+
+test('failed canvas solve retains inspected time and prior plan; successful canvas time is clamped to duration', async () => {
+  let fail = false;
+  const h = harness({compileScene: next => fail ? Promise.reject(new SearchBudgetExceeded('Exact work exhausted')) : compileScene(next)});
+  await h.studio.loadDocument(scene()); const prior = h.studio.getState().plan;
+  h.el.time.value = '1.5'; fail = true; h.el.aspect.value = 'portrait'; await h.el.aspect.emit('change');
+  assert.equal(h.el.time.value, '1.5'); assert.deepEqual(h.studio.getState().plan, prior);
+  assert.equal(h.el['status-title'].textContent, 'Search is inconclusive'); assert.equal(h.el['save-plan'].disabled, true);
+  fail = false; h.el.time.value = '20'; h.el.aspect.value = 'square'; await h.el.aspect.emit('change');
+  assert.equal(h.el.time.value, '3'); assert.equal(h.el['time-label'].textContent, '3.00 s');
+});
