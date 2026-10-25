@@ -6,13 +6,13 @@ Labels collide between keyframes. Portrait crops erase important points. Kinetyl
 
 [Open the studio](https://nazeeh111.github.io/Kinetyl/) · [Download](https://github.com/nazeeh111/Kinetyl/releases) · [Scene format](SCHEMAS.md)
 
-[![Watch the 16-second Kinetyl walkthrough: the same crossing motion, with overlapping labels before compilation and separated labels afterward](docs/images/launch.jpg)](https://nazeeh111.github.io/Kinetyl/launch.mp4)
+[![The Kinetyl motion studio compares overlapping labels with the compiled placement at 3.00 seconds](docs/images/studio-dark.png)](https://nazeeh111.github.io/Kinetyl/)
 
-[Watch the 16-second walkthrough](https://nazeeh111.github.io/Kinetyl/launch.mp4) · [Film sources and scope](docs/launch-film.md).
+[Watch the earlier studio walkthrough (16 seconds)](https://nazeeh111.github.io/Kinetyl/launch.mp4) · [Film sources and scope](docs/launch-film.md).
 
 The first view uses the bundled, independently checked curved-crossing plan. The two browser drawings show the same source paths and time, with the labels in their before and compiled positions. They represent declared geometry; native video validation is separate.
 
-![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring.jpg)
+![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring-dark.png)
 
 The studio now has a linked world-path editor. Enable **Edit paths**, choose an endpoint or Bézier control, and drag on the visible 1/20-unit grid or enter exact fractions. Arrow keys move one axis; cancel, undo and redo retain exact source values. Compile the draft, switch canvas, then save and reopen the verified plan. [Authoring and recovery](docs/authoring.md).
 
@@ -24,7 +24,7 @@ The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: t
 
 Python 3.11+. The compiler, verifier and exported browser studio need no runtime dependencies or paid service.
 
-The `v0.3.1` wheel and studio ZIP include the current first-use comparison and canvas status fix. The existing `v0.3.0` artifacts remain frozen at their tagged source.
+The `v0.3.1` wheel and studio ZIP include the first-use comparison and canvas status fix. The hosted studio has the newer instrument layout; published release artifacts keep their tagged presentation. The existing `v0.3.0` artifacts remain frozen.
 
 ```sh
 python -m pip install /path/to/kinetyl-0.3.1-py3-none-any.whl

@@ -154,10 +154,10 @@ export function createStudio(doc, dependencies = {}) {
     const world = svg('g', {transform: 'scale(1,-1)'});
     // Grid is presentation geometry, capped even for tiny valid camera scales.
     const gridStep = Math.max(1, Math.ceil(halfW / 12));
-    for (let x = Math.ceil(-halfW / gridStep); x <= halfW / gridStep; x++) svg('line', {x1: x * gridStep, x2: x * gridStep, y1: -4, y2: 4, stroke: x ? '#e5e7eb' : '#94a3b8', 'stroke-width': .012}, world);
-    for (let y = -4; y <= 4; y++) svg('line', {x1: -halfW, x2: halfW, y1: y, y2: y, stroke: y ? '#e5e7eb' : '#94a3b8', 'stroke-width': .012}, world);
+    for (let x = Math.ceil(-halfW / gridStep); x <= halfW / gridStep; x++) svg('line', {x1: x * gridStep, x2: x * gridStep, y1: -4, y2: 4, stroke: x ? 'var(--grid)' : 'var(--axis)', 'stroke-width': .012}, world);
+    for (let y = -4; y <= 4; y++) svg('line', {x1: -halfW, x2: halfW, y1: y, y2: y, stroke: y ? 'var(--grid)' : 'var(--axis)', 'stroke-width': .012}, world);
     scene.nodes.forEach((node, i) => {
-      const color=['#1d4ed8','#a21caf','#0f766e','#b45309'][i%4];
+      const color=['var(--series-0)','var(--series-1)','var(--series-2)','var(--series-3)'][i%4];
       const [wx, wy] = pointAt(node.keyframes, time, node.controls), x = wx * scale, y = wy * scale;
       const hx = number(node.envelope.width) / 2, hy = number(node.envelope.height) / 2, r = number(node.radius);
       const offset = renderingMode === 'before' ? [0, hy + r + number(scene.margin)] : [number(plan.layout.offsets[i].x), number(plan.layout.offsets[i].y)];
