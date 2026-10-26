@@ -63,4 +63,4 @@ PYTHONPATH=src python -m unittest discover -s tests
 node --test tests/*.test.mjs
 ```
 
-Kinetyl's compiler, verifier, schemas, CLI and studio are original MIT code. [ManimGX](https://github.com/academa-labs/manimgx) is an optional renderer by Academa Labs and its contributors, distributed separately under its own licenses. Noto font notices accompany the portable outlines. No upstream benchmark is claimed as a Kinetyl result. See [validation](VALIDATION.md), [contributing](CONTRIBUTING.md) and [security](SECURITY.md).
+Kinetyl's compiler, verifier, schemas, CLI and studio are original MIT code. The optional ManimGX renderer is distributed separately under its own licenses. Noto font notices accompany the portable outlines. See [validation](VALIDATION.md), [contributing](CONTRIBUTING.md) and [security](SECURITY.md).
