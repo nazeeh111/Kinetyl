@@ -24,12 +24,29 @@ The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: t
 
 Python 3.11+. The compiler, verifier and exported browser studio need no runtime dependencies or paid service.
 
+### Run the studio from source, without installing packages
+
+```sh
+git clone https://github.com/nazeeh111/Kinetyl.git
+cd Kinetyl
+PYTHONPATH=src python3 -m kinetyl export examples/curved-crossing.plan.json --out my-studio
+python3 -m http.server 8000 --bind 127.0.0.1 --directory my-studio
+```
+
+Open `http://127.0.0.1:8000`. Export independently verifies the bundled plan before
+writing the studio. Compare **Before / Compiled** at **3.00 s**, then switch to
+**9:16**. No renderer, graphics adapter or package download is needed for this
+route after obtaining the source. The server serves only `my-studio` on your
+computer; stop it with Ctrl+C. Choose a new output name if `my-studio` exists.
+
+### Install the CLI for your own scenes
+
 The `v0.3.1` wheel and studio ZIP include the first-use comparison and canvas status fix. The hosted studio has the newer instrument layout; published release artifacts keep their tagged presentation. The existing `v0.3.0` artifacts remain frozen.
 
 ```sh
 python -m pip install /path/to/kinetyl-0.3.1-py3-none-any.whl
-kinetyl example curved-crossing --out examples
-kinetyl compile examples/curved-crossing.scene.json --out compiled
+kinetyl example curved-crossing --out demo-inputs
+kinetyl compile demo-inputs/curved-crossing.scene.json --out compiled
 kinetyl verify compiled/plan.json
 kinetyl export compiled/plan.json --out studio
 python -m http.server 8000 --directory studio
@@ -41,7 +58,7 @@ For your own text and an actual MP4, install the optional pinned renderer:
 
 ```sh
 python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.3.1-py3-none-any.whl'
-kinetyl measure examples/curved-crossing.intent.json --out measured
+kinetyl measure demo-inputs/curved-crossing.intent.json --out measured
 kinetyl compile measured/scene.json --out planned
 kinetyl render planned/plan.json --out video
 ```
