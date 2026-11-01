@@ -12,13 +12,7 @@ Labels collide between keyframes. Portrait crops erase important points. Kinetyl
 
 The first view uses the bundled, independently checked curved-crossing plan. The two browser drawings show the same source paths and time, with the labels in their before and compiled positions. They represent declared geometry; native video validation is separate.
 
-![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring-dark.png)
-
-The studio now has a linked world-path editor. Enable **Edit paths**, choose an endpoint or Bézier control, and drag on the visible 1/20-unit grid or enter exact fractions. Arrow keys move one axis; cancel, undo and redo retain exact source values. Compile the draft, switch canvas, then save and reopen the verified plan. [Authoring and recovery](docs/authoring.md).
-
-The default studio shows two cubic trajectories sharing an arch. Compare the collision at **3.00 s** at the top, then use **Inspect the timeline** to switch **Before / Compiled** or change to **9:16**. The curves and event times stay fixed while labels and camera framing adapt. [Try or author curved motion](docs/curved-motion.md). Actual exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
-
-The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: two branches cross and the determinant follows five sampled values. Try **Jump to collision**, switch **Before / Compiled**, then change the canvas to **9:16**. The mathematical coordinates stay the same. The determinant is a piecewise linear approximation between its samples, not a continuous quadratic simulation. Its original [wide](docs/native/wide.mp4) and [portrait](docs/native/portrait.mp4) native exports remain available with their [wide](docs/native/wide.json) and [portrait](docs/native/portrait.json) receipts.
+At **3.00 s**, compare **Before / Compiled**, then switch to **9:16**. The curved paths and event times stay fixed while label placement and camera framing change. [Curved-motion guide](docs/curved-motion.md). Actual native exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
 
 ## Use it
 
@@ -64,6 +58,14 @@ kinetyl render planned/plan.json --out video
 ```
 
 Native rendering uses **ManimGX 0.1.1**, Noto Sans and a supported graphics adapter. It remeasures typography, checks an object-ID pass at every rendered frame, and then exports a normal-color MP4 plus a receipt. Both passes count toward the pixel budget. The receipt distinguishes exact envelope geometry from sampled native pixels, with a four-pixel correspondence tolerance.
+
+## Inspect and author motion
+
+![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring-dark.png)
+
+The studio now has a linked world-path editor. Enable **Edit paths**, choose an endpoint or Bézier control, and drag on the visible 1/20-unit grid or enter exact fractions. Arrow keys move one axis; cancel, undo and redo retain exact source values. Compile the draft, switch canvas, then save and reopen the verified plan. [Authoring and recovery](docs/authoring.md).
+
+The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: two branches cross and the determinant follows five sampled values. Try **Jump to collision**, switch **Before / Compiled**, then change the canvas to **9:16**. The mathematical coordinates stay the same. The determinant is a piecewise linear approximation between its samples, not a continuous quadratic simulation. Its original [wide](docs/native/wide.mp4) and [portrait](docs/native/portrait.mp4) native exports remain available with their [wide](docs/native/wide.json) and [portrait](docs/native/portrait.json) receipts.
 
 ## What it solves
 
