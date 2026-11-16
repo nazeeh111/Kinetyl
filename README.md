@@ -6,11 +6,11 @@ Labels collide between keyframes. Portrait crops erase important points. Kinetyl
 
 [Open the studio](https://nazeeh111.github.io/Kinetyl/) · [Download](https://github.com/nazeeh111/Kinetyl/releases) · [Scene format](SCHEMAS.md)
 
-[![The Kinetyl motion studio compares overlapping labels with the compiled placement at 3.00 seconds](docs/images/studio-dark.png)](https://nazeeh111.github.io/Kinetyl/)
+[![The Kinetyl motion studio compares overlapping labels with the compiled placement at 3.00 seconds](docs/images/studio-current.png)](https://nazeeh111.github.io/Kinetyl/)
 
 [Watch the earlier studio walkthrough (16 seconds)](https://nazeeh111.github.io/Kinetyl/launch.mp4) · [Film sources and scope](docs/launch-film.md).
 
-The first view uses the bundled, independently checked curved-crossing plan. The two browser drawings show the same source paths and time, with the labels in their before and compiled positions. They represent declared geometry; native video validation is separate.
+[Current capture provenance](docs/images/current-capture.json). The first view uses the bundled, independently checked curved-crossing plan. The two browser drawings show the same source paths and time, with the labels in their before and compiled positions. They represent declared geometry; native video validation is separate.
 
 At **3.00 s**, compare **Before / Compiled**, then switch to **9:16**. The curved paths and event times stay fixed while label placement and camera framing change. [Curved-motion guide](docs/curved-motion.md). Actual native exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
 
@@ -35,23 +35,30 @@ computer; stop it with Ctrl+C. Choose a new output name if `my-studio` exists.
 
 ### Install the CLI for your own scenes
 
-The `v0.3.1` wheel and studio ZIP include the first-use comparison and canvas status fix. The hosted studio has the newer instrument layout; published release artifacts keep their tagged presentation. The existing `v0.3.0` artifacts remain frozen.
+The current source is **0.3.2.dev0**, including project compose/check-build and the portrait comparison fix. Install it in an isolated environment:
 
 ```sh
-python -m pip install /path/to/kinetyl-0.3.1-py3-none-any.whl
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
+```
+
+The tagged `v0.3.1` wheel and studio ZIP retain their original UI and command set. The `v0.3.0` artifacts are also frozen. [Earlier releases](https://github.com/nazeeh111/Kinetyl/releases) remain available separately.
+
+```sh
 kinetyl example curved-crossing --out demo-inputs
 kinetyl compile demo-inputs/curved-crossing.scene.json --out compiled
 kinetyl verify compiled/plan.json
 kinetyl export compiled/plan.json --out studio
-python -m http.server 8000 --directory studio
+python -m http.server 8000 --bind 127.0.0.1 --directory studio
 ```
 
-Open `http://localhost:8000`. Each output command requires a new destination and writes a manifest of file hashes. The export includes an editable plan, measured scene and portable ZIP. Imports are data; no imported code executes. `kinetyl example three-streams --portrait --out streams` provides a second editable case.
+Open `http://127.0.0.1:8000`. Each output command requires a new destination and writes a manifest of file hashes. The export includes an editable plan, measured scene and portable ZIP. Imports are data; no imported code executes. `kinetyl example three-streams --portrait --out streams` provides a second editable case.
 
 For your own text and an actual MP4, install the optional pinned renderer:
 
 ```sh
-python -m pip install 'kinetyl[render] @ file:///absolute/path/to/kinetyl-0.3.1-py3-none-any.whl'
+python -m pip install '.[render]'
 kinetyl measure demo-inputs/curved-crossing.intent.json --out measured
 kinetyl compile measured/scene.json --out planned
 kinetyl render planned/plan.json --out video
@@ -59,11 +66,26 @@ kinetyl render planned/plan.json --out video
 
 Native rendering uses **ManimGX 0.1.1**, Noto Sans and a supported graphics adapter. It remeasures typography, checks an object-ID pass at every rendered frame, and then exports a normal-color MP4 plus a receipt. Both passes count toward the pixel budget. The receipt distinguishes exact envelope geometry from sampled native pixels, with a four-pixel correspondence tolerance.
 
+### Build and reopen one motion project
+
+With the optional pinned renderer installed, one command measures an editable source, compiles and independently verifies its declared motion, and creates a portable studio:
+
+```sh
+kinetyl compose my-intent.json --out motion-build
+kinetyl check-build motion-build
+```
+
+Add `--render` to include a native MP4 and its ID-pass receipt. `--pixel-budget` limits both render passes. Compose also accepts a measured scene or verified plan exported by the studio; it extracts editable intent and measures the text again instead of trusting imported envelopes. Open `motion-build/portable.zip` or serve its extracted `index.html`; the exact input is retained as `source.json` and editable intent as `intent.json`. The separate `handoff.zip` contains only these JSON records, scene, plan, verification and a manifest; it carries no executable studio scripts.
+
+For a new destination, `--reuse motion-build` can use an independently verified prior candidate only when its scene matches the fresh measurement. A reused candidate passes the declared geometry checks, but its compiler selection optimality is not established. Text, paths, timing or output changes that alter the scene trigger compilation again. Prior outputs are never overwritten. Stage progress appears on stderr; a failure before publication leaves the previous build intact. The completion manifest is written last, so a directory without it is incomplete. A sudden process or power failure can leave an incomplete new directory; choose a new destination after inspecting it.
+
+`check-build` captures and hashes the stored files, independently rechecks the plan, and verifies that the data-only handoff and portable archive contain the same data and that the portable studio assets match the installed copy. For a movie it checks the saved receipt and bytes; it does not rerender or remeasure. These unsigned local records do not authenticate origin, certify physical behavior, continuous raster pixels, accessibility or viewer comprehension. During a concurrent edit an input snapshot can contain a mixture of bytes, but the exact captured bytes are the ones parsed and retained. Individual input JSON is limited to 4 MiB and delivered ZIP/movie bytes to 256 MiB each. The saved native receipt refers to its temporary rendering path; the delivered movie is `movie.mp4`.
+
 ## Inspect and author motion
 
-![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring-dark.png)
+![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring-current.png)
 
-The studio now has a linked world-path editor. Enable **Edit paths**, choose an endpoint or Bézier control, and drag on the visible 1/20-unit grid or enter exact fractions. Arrow keys move one axis; cancel, undo and redo retain exact source values. Compile the draft, switch canvas, then save and reopen the verified plan. [Authoring and recovery](docs/authoring.md).
+The studio links playback to a world-path editor. Enable **Edit paths**, choose an endpoint or Bézier control, and drag on the visible 1/20-unit grid or enter exact fractions. Arrow keys move one axis; cancel, undo and redo retain exact source values. Compile the draft, switch canvas, then save and reopen the verified plan. [Authoring and recovery](docs/authoring.md).
 
 The retained linear example follows the eigenvalues of `A(u) = diag(u, −u)`: two branches cross and the determinant follows five sampled values. Try **Jump to collision**, switch **Before / Compiled**, then change the canvas to **9:16**. The mathematical coordinates stay the same. The determinant is a piecewise linear approximation between its samples, not a continuous quadratic simulation. Its original [wide](docs/native/wide.mp4) and [portrait](docs/native/portrait.mp4) native exports remain available with their [wide](docs/native/wide.json) and [portrait](docs/native/portrait.json) receipts.
 

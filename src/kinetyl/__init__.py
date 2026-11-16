@@ -3,6 +3,6 @@ from .core import (InvalidPlan, InvalidScene, KinetylError, NoSolution,
                    SearchBudgetExceeded, compile_scene, validate_intent,
                    validate_scene, verify_plan)
 
-__version__ = "0.3.1"
+__version__ = "0.3.2.dev0"
 __all__ = ["validate_intent", "validate_scene", "compile_scene", "verify_plan",
            "KinetylError", "InvalidScene", "InvalidPlan", "NoSolution", "SearchBudgetExceeded"]

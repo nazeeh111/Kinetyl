@@ -218,6 +218,9 @@ export function createStudio(doc, dependencies = {}) {
     const beforeView = proofView('before', time, involved), compiledView = proofView('compiled', time, involved);
     render(el['proof-before'], 'before', time, false, beforeView);
     render(el['proof-compiled'], 'compiled', time, false, compiledView);
+    // Tall proof viewBoxes need vertical room on narrow screens; geometry is unchanged.
+    el['proof-before'].classList.toggle('proof-tall', !!beforeView && beforeView.box[3] > beforeView.box[2]);
+    el['proof-compiled'].classList.toggle('proof-tall', !!compiledView && compiledView.box[3] > compiledView.box[2]);
     write('proof-title', `${conflict ? (conflict.kind === 'label-label' ? 'The crossing' : 'The first overlap') : 'Compare placements'} at ${time.toFixed(2)} s`);
     write('proof-before-title', conflict ? (conflict.kind === 'label-label' ? 'Labels collide' : 'Placement overlaps') : 'Before placement');
     write('proof-after-title', conflict ? (conflict.kind === 'label-label' ? 'Labels separate' : 'Placement clears') : 'Compiled placement');

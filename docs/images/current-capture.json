@@ -1,0 +1,28 @@
+{
+  "version": "0.3.2.dev0",
+  "capture_kind": "Actual isolated localhost Chrome browser screenshots from an installed wheel export",
+  "viewport": [
+    1280,
+    1000
+  ],
+  "capture_wheel_sha256": "981de2f293f3c7c286d0ccdf072bcbf51a3742974c2595997efdfbda52949c9a",
+  "runtime_assets": {
+    "index.html": "71dc6fa93a5dfa898f5819c2ac15c826b8f75b89b45254f6bbba18eeefaa6eef",
+    "studio.css": "9760f87f6e857143168b5793223532be5772a770f8a56ce6080cf7ee01a0263a",
+    "studio.mjs": "1a18cedd4b6b972824316c296e0b1d28b38ff2f67217029c599be5b5b8cbe5a5",
+    "authoring.mjs": "9023ef0957e538806efec4c0a8d258c3576f8ee96b4fb32dce99df5483a8f421",
+    "geometry.mjs": "b4d5fa42b7ffc5163a5ac0eae0fa6afb0b74b5c60548a5d2926435eb05b7c64d",
+    "polynomial.mjs": "7d9744ae5b781491e1d5371fa8f62e879a6e153bceb77c9e245f0f4b51c394b6"
+  },
+  "plan_sha256": "069b62482b4512e66a8995c4641a978b46cc1c6d97827e7827b367878bfe56fb",
+  "studio-current.png": {
+    "sha256": "7712421f97decce26953056aaecbf1dfcc0141ca92baa20fd38b95321b8722c7",
+    "state": "Bundled verified curved crossing, wide canvas, fixed before/compiled comparison at3s"
+  },
+  "authoring-current.png": {
+    "sha256": "00c9fbc04165431b8cdd113ab7f224ba869c506a243fe3b3b4223c97e23995bc",
+    "state": "Native edited and compiled portrait plan reopened; alpha cubic control1 selected, exact x=-39/20,y=2",
+    "downloaded_plan_sha256": "d3f6ab2b5626af2155d140ac5ecca93a62d6fae52ffa4b2348ac66335e9b6065"
+  },
+  "scope": "Browser shows declared geometry. Existing native videos and receipts are historical and separate; no new native rendering is claimed. Capture wheel predates this README and these image assets; all runtime Python/assets are identical to the final source."
+}

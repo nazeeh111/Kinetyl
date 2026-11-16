@@ -5,28 +5,42 @@ import sys
 import zipfile
 import io as buffer
 
-from . import core
+from . import core, __version__
 from .io import read_json, data, bundle
 
 ASSETS=Path(__file__).with_name("assets")
 
 
 def parser():
-    result=argparse.ArgumentParser(description="Keep labels readable throughout supported animation paths.")
-    result.add_argument("--version",action="version",version="0.3.1")
+    result=argparse.ArgumentParser(
+        description="Compile label placement and framing for declared straight or cubic motion.",
+        epilog="Compile, verify and export need no renderer. Measure, compose and render require "
+               "the optional ManimGX renderer. Outputs require a new destination; existing files "
+               "are retained. Exit 0: completed; 2: refused or inconclusive. "
+               "Exact geometry checks do not certify continuous rendered pixels or readability.")
+    result.add_argument("--version",action="version",version="Kinetyl "+__version__)
     commands=result.add_subparsers(dest="command",required=True)
-    sample=commands.add_parser("example",help="Write a bundled editable example to a new directory")
+    sample=commands.add_parser("example",help="Write a bundled editable example to a new directory", description="Write bundled intent, measured scene and verified plan files without a renderer.")
     sample.add_argument("name",choices=["eigenvalue-crossing","three-streams","curved-crossing"])
     sample.add_argument("--portrait",action="store_true")
-    sample.add_argument("--out",required=True,type=Path)
+    sample.add_argument("--out",required=True,type=Path,help="New output directory; existing paths are refused")
+    check=commands.add_parser("check-build",help="Reopen a compose output and check its source, bytes and geometry", description="Check captured build files and exact geometry using this installed studio. Saved native receipts are checked without rerendering or remeasuring.")
+    check.add_argument("input",type=Path)
+    compose=commands.add_parser("compose",help="Measure, verify and export an editable intent, scene or verified plan", description="Remeasure intent, scene or plan with optional ManimGX, then compile, verify and export a portable build to a new directory.")
+    compose.add_argument("input",type=Path)
+    compose.add_argument("--out",required=True,type=Path,help="New output directory; existing paths are refused")
+    compose.add_argument("--reuse",type=Path,help="Prior compose directory; reuse only a verified matching plan")
+    compose.add_argument("--render",action="store_true",help="Also render a checked native movie")
+    compose.add_argument("--work-budget",type=int,default=250000)
+    compose.add_argument("--pixel-budget",type=int,default=400000000)
     for name,description in [("measure","Measure text with the optional native renderer"),
                              ("compile","Solve and verify a measured scene"),
                              ("verify","Independently check an imported plan"),
                              ("export","Export a portable inspection studio"),
                              ("render","Render a verified plan with ManimGX")]:
-        sub=commands.add_parser(name,help=description)
+        sub=commands.add_parser(name,help=description,description=description)
         sub.add_argument("input",type=Path)
-        if name!="verify":sub.add_argument("--out",required=True,type=Path)
+        if name!="verify":sub.add_argument("--out",required=True,type=Path,help="New output directory; existing paths are refused")
         if name=="compile":sub.add_argument("--work-budget",type=int,default=250000)
         if name=="render":sub.add_argument("--pixel-budget",type=int,default=400000000)
     return result
@@ -51,7 +65,7 @@ def export(plan,out):
 def main(argv=None):
     args=parser().parse_args(argv)
     try:
-        if args.command!="verify" and (args.out.exists() or args.out.is_symlink()):
+        if args.command not in ("verify", "check-build") and (args.out.exists() or args.out.is_symlink()):
             raise FileExistsError("Output already exists; choose a new destination")
         if args.command=="example":
             name=args.name+("-portrait" if args.portrait else "")
@@ -61,6 +75,17 @@ def main(argv=None):
             if scope.exists():files["scope.json"]=scope.read_bytes()
             bundle(args.out,files)
             print("Wrote editable example: "+str(args.out))
+            return 0
+        if args.command=="check-build":
+            from .build import check_build
+            print(data(check_build(args.input)).decode(),end="")
+            return 0
+        if args.command=="compose":
+            from .build import compose
+            receipt=compose(args.input,args.out,reuse=args.reuse,render=args.render,
+                            work_budget=args.work_budget,pixel_budget=args.pixel_budget,
+                            progress=lambda stage: print('kinetyl: '+stage,file=sys.stderr))
+            print(data(receipt).decode(),end="")
             return 0
         document=read_json(args.input)
         if args.command=="verify":
