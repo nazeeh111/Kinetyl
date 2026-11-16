@@ -59,6 +59,21 @@ kinetyl render planned/plan.json --out video
 
 Native rendering uses **ManimGX 0.1.1**, Noto Sans and a supported graphics adapter. It remeasures typography, checks an object-ID pass at every rendered frame, and then exports a normal-color MP4 plus a receipt. Both passes count toward the pixel budget. The receipt distinguishes exact envelope geometry from sampled native pixels, with a four-pixel correspondence tolerance.
 
+### Build and reopen one motion project
+
+With the optional pinned renderer installed, one command measures an editable source, compiles and independently verifies its declared motion, and creates a portable studio:
+
+```sh
+kinetyl compose my-intent.json --out motion-build
+kinetyl check-build motion-build
+```
+
+Add `--render` to include a native MP4 and its ID-pass receipt. `--pixel-budget` limits both render passes. Compose also accepts a measured scene or verified plan exported by the studio; it extracts editable intent and measures the text again instead of trusting imported envelopes. Open `motion-build/portable.zip` or serve its extracted `index.html`; the exact input is retained as `source.json` and editable intent as `intent.json`. The separate `handoff.zip` contains only these JSON records, scene, plan, verification and a manifest; it carries no executable studio scripts.
+
+For a new destination, `--reuse motion-build` can use an independently verified prior candidate only when its scene matches the fresh measurement. A reused candidate passes the declared geometry checks, but its compiler selection optimality is not established. Text, paths, timing or output changes that alter the scene trigger compilation again. Prior outputs are never overwritten. Stage progress appears on stderr; a failure before publication leaves the previous build intact. The completion manifest is written last, so a directory without it is incomplete. A sudden process or power failure can leave an incomplete new directory; choose a new destination after inspecting it.
+
+`check-build` captures and hashes the stored files, independently rechecks the plan, and verifies that the data-only handoff and portable archive contain the same data and that the portable studio assets match the installed copy. For a movie it checks the saved receipt and bytes; it does not rerender or remeasure. These unsigned local records do not authenticate origin, certify physical behavior, continuous raster pixels, accessibility or viewer comprehension. During a concurrent edit an input snapshot can contain a mixture of bytes, but the exact captured bytes are the ones parsed and retained. Individual input JSON is limited to 4 MiB and delivered ZIP/movie bytes to 256 MiB each. The saved native receipt refers to its temporary rendering path; the delivered movie is `movie.mp4`.
+
 ## Inspect and author motion
 
 ![World-path authoring with a selected Bézier control and exact coordinates](docs/images/authoring-dark.png)

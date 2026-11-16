@@ -19,6 +19,15 @@ def parser():
     sample.add_argument("name",choices=["eigenvalue-crossing","three-streams","curved-crossing"])
     sample.add_argument("--portrait",action="store_true")
     sample.add_argument("--out",required=True,type=Path)
+    check=commands.add_parser("check-build",help="Reopen a compose output and check its source, bytes and geometry")
+    check.add_argument("input",type=Path)
+    compose=commands.add_parser("compose",help="Measure, verify and export an editable intent, scene or verified plan")
+    compose.add_argument("input",type=Path)
+    compose.add_argument("--out",required=True,type=Path)
+    compose.add_argument("--reuse",type=Path,help="Prior compose directory; reuse only a verified matching plan")
+    compose.add_argument("--render",action="store_true",help="Also render a checked native movie")
+    compose.add_argument("--work-budget",type=int,default=250000)
+    compose.add_argument("--pixel-budget",type=int,default=400000000)
     for name,description in [("measure","Measure text with the optional native renderer"),
                              ("compile","Solve and verify a measured scene"),
                              ("verify","Independently check an imported plan"),
@@ -51,7 +60,7 @@ def export(plan,out):
 def main(argv=None):
     args=parser().parse_args(argv)
     try:
-        if args.command!="verify" and (args.out.exists() or args.out.is_symlink()):
+        if args.command not in ("verify", "check-build") and (args.out.exists() or args.out.is_symlink()):
             raise FileExistsError("Output already exists; choose a new destination")
         if args.command=="example":
             name=args.name+("-portrait" if args.portrait else "")
@@ -61,6 +70,17 @@ def main(argv=None):
             if scope.exists():files["scope.json"]=scope.read_bytes()
             bundle(args.out,files)
             print("Wrote editable example: "+str(args.out))
+            return 0
+        if args.command=="check-build":
+            from .build import check_build
+            print(data(check_build(args.input)).decode(),end="")
+            return 0
+        if args.command=="compose":
+            from .build import compose
+            receipt=compose(args.input,args.out,reuse=args.reuse,render=args.render,
+                            work_budget=args.work_budget,pixel_budget=args.pixel_budget,
+                            progress=lambda stage: print('kinetyl: '+stage,file=sys.stderr))
+            print(data(receipt).decode(),end="")
             return 0
         document=read_json(args.input)
         if args.command=="verify":

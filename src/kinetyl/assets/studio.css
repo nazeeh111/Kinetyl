@@ -180,3 +180,7 @@ footer {display:flex;gap:24px;justify-content:space-between;padding:24px 32px;bo
   #stage.portrait {height:440px}
   .inspector {padding:20px 16px}
 }
+
+/* Keep tall comparison viewBoxes legible without cropping their geometry. */
+.proof-grid svg.proof-tall { aspect-ratio:4 / 3; }
+@media(max-width:720px) { .proof-grid svg.proof-tall { aspect-ratio:3 / 4; } }
