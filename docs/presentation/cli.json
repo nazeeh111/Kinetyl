@@ -1,0 +1,82 @@
+{
+  "python": "3.14.7 (v3.14.7:823f0323ee6, Aug  5 2026, 07:07:01) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "runs": [
+    {
+      "args": [
+        "verify",
+        "/Users/nazeeh/Documents/Codex/2026-11-17/portfolio-design/candidates/repositories/Kinetyl-design/source/docs/presentation/edited-wide.plan.json"
+      ],
+      "code": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"input_sha256\": \"adadcc85c7a06b61b62d5775aa565b264e6bcc279197d23b789dc161c5b87480\",\n  \"checks\": {\n    \"label_pair_checks\": 3,\n    \"label_dot_checks\": 9,\n    \"viewport_checks\": 6\n  },\n  \"scope\": \"Exact declared rectangles; piecewise-cubic Bezier centers with linear segment time; fixed presentation geometry; static axis-aligned camera; square clearance.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "verify",
+        "/Users/nazeeh/Documents/Codex/2026-11-17/portfolio-design/candidates/repositories/Kinetyl-design/source/docs/presentation/edited-portrait.plan.json"
+      ],
+      "code": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"input_sha256\": \"99792cdc44dbf339f3217fbb09aafcc450cfb0936cb46303df8a96de3f4a09d9\",\n  \"checks\": {\n    \"label_pair_checks\": 3,\n    \"label_dot_checks\": 9,\n    \"viewport_checks\": 6\n  },\n  \"scope\": \"Exact declared rectangles; piecewise-cubic Bezier centers with linear segment time; fixed presentation geometry; static axis-aligned camera; square clearance.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "export",
+        "/Users/nazeeh/Documents/Codex/2026-11-17/portfolio-design/candidates/repositories/Kinetyl-design/source/docs/presentation/edited-portrait.plan.json",
+        "--out",
+        "/var/folders/ss/tml7487n205dg94kb7__tth80000gn/T/kinetyl-actual-1ztmah7t/studio"
+      ],
+      "code": 0,
+      "stdout": "Exported portable studio and ZIP: /var/folders/ss/tml7487n205dg94kb7__tth80000gn/T/kinetyl-actual-1ztmah7t/studio\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "verify",
+        "/var/folders/ss/tml7487n205dg94kb7__tth80000gn/T/kinetyl-actual-1ztmah7t/reopened/plan.json"
+      ],
+      "code": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"input_sha256\": \"99792cdc44dbf339f3217fbb09aafcc450cfb0936cb46303df8a96de3f4a09d9\",\n  \"checks\": {\n    \"label_pair_checks\": 3,\n    \"label_dot_checks\": 9,\n    \"viewport_checks\": 6\n  },\n  \"scope\": \"Exact declared rectangles; piecewise-cubic Bezier centers with linear segment time; fixed presentation geometry; static axis-aligned camera; square clearance.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "export",
+        "/Users/nazeeh/Documents/Codex/2026-11-17/portfolio-design/candidates/repositories/Kinetyl-design/source/docs/presentation/edited-portrait.plan.json",
+        "--out",
+        "/var/folders/ss/tml7487n205dg94kb7__tth80000gn/T/kinetyl-actual-1ztmah7t/studio"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "Refused: Output already exists; choose a new destination\n"
+    },
+    {
+      "args": [
+        "export",
+        "/var/folders/ss/tml7487n205dg94kb7__tth80000gn/T/kinetyl-actual-1ztmah7t/invalid.json",
+        "--out",
+        "/var/folders/ss/tml7487n205dg94kb7__tth80000gn/T/kinetyl-actual-1ztmah7t/invalid-out"
+      ],
+      "code": 2,
+      "stdout": "",
+      "stderr": "Refused: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)\n"
+    }
+  ],
+  "zipMembers": [
+    "LICENSE.txt",
+    "NOTO-LICENSE.txt",
+    "README.txt",
+    "authoring.mjs",
+    "geometry.mjs",
+    "index.html",
+    "plan.json",
+    "polynomial.mjs",
+    "scene.json",
+    "studio.css",
+    "studio.mjs",
+    "verification.json"
+  ],
+  "freshExtractedPlanVerified": true,
+  "existingOutputPreserved": true,
+  "invalidLeavesNoOutput": true
+}

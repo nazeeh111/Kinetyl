@@ -1,0 +1,88 @@
+{
+  "initialStatus": "Full trajectory checked",
+  "initial": [
+    {
+      "id": "alpha",
+      "keyframes": [
+        [
+          "0",
+          "-2",
+          "-1"
+        ],
+        [
+          "6",
+          "2",
+          "-1"
+        ]
+      ],
+      "controls": [
+        [
+          "-2",
+          "2",
+          "2",
+          "2"
+        ]
+      ]
+    },
+    {
+      "id": "beta",
+      "keyframes": [
+        [
+          "0",
+          "2",
+          "-1"
+        ],
+        [
+          "6",
+          "-2",
+          "-1"
+        ]
+      ],
+      "controls": [
+        [
+          "2",
+          "2",
+          "-2",
+          "2"
+        ]
+      ]
+    },
+    {
+      "id": "origin",
+      "keyframes": [
+        [
+          "0",
+          "0",
+          "-5/2"
+        ],
+        [
+          "6",
+          "0",
+          "-5/2"
+        ]
+      ],
+      "controls": [
+        [
+          "0",
+          "-5/2",
+          "0",
+          "-5/2"
+        ]
+      ]
+    }
+  ],
+  "playbackAdvanced": true,
+  "selected": "alpha · segment 1 · control 1",
+  "pendingDisablesExport": true,
+  "invalidRetainsSource": true,
+  "cancelRestores": true,
+  "exactSingleCoordinate": true,
+  "undoExact": true,
+  "redoExact": true,
+  "compiled": "Full trajectory checked",
+  "portraitPathsExact": true,
+  "phoneOverflow": false,
+  "freshReopen": true,
+  "invalidImportPreservesPaths": true,
+  "invalidImportNotice": "Previous document retained. Return to last compiled edit to recover."
+}

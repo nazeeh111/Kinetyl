@@ -1,0 +1,78 @@
+{
+  "source_parent": "b5d42527f70ee4016a31f75d1bbd1997daec183d",
+  "source_tree": "6fe0513f0a3f35ca225e951f1d4537c69ab8aab4",
+  "encoding": "Uniform x/y world scale and identical scales across Before/Compiled panels. Actual studio Before uses zero horizontal offset and vertical offset envelope.height/2+radius+margin at camera1; compiled offsets retained. Actual cubic curves and compound nonzero-winding Noto outlines. t=3 corresponds to u=1/2 on unchanged0\u20136second segment. Cropped Alpha/Beta detail of edited wide plan; not native raster or interval proof. Preview colors only.",
+  "transformations": "Alpha first control y2\u21923/2 before compilation; no other scene field changed. Portrait differs in export dimensions only and camera scale4/5; wide scale1.",
+  "files": {
+    "README.md": {
+      "bytes": 4379,
+      "sha256": "20450013442c295c84e0c3f8b5ebcf6e3e6c4ba427b96876b63e862f48829f14"
+    },
+    "cli.json": {
+      "bytes": 3792,
+      "sha256": "bf786f0354e4ef650f079531db14aa653c38c490c56e07f88486713a28d03613"
+    },
+    "edited-portrait.plan.json": {
+      "bytes": 137455,
+      "sha256": "6555b6b470e88f7fa02cd2d4c92b80fe810d0bcc0fcd3ca312ee8880717f0b54"
+    },
+    "edited-studio.zip": {
+      "bytes": 71317,
+      "sha256": "22a81efdf6701cf8c023ef646d5134790fea16b89298abdd1767b8155f36436d"
+    },
+    "edited-wide.plan.json": {
+      "bytes": 137432,
+      "sha256": "5a877063eb7494ebb930a2a6ead5b815ccf558e4fb830fca0a8ecab39d67b4de"
+    },
+    "edited-wide.scene.json": {
+      "bytes": 128593,
+      "sha256": "578fb2812fe2c1173f03170b6685d763fa3e379804501921a584a8fa56994117"
+    },
+    "figure.py": {
+      "bytes": 4538,
+      "sha256": "c1bb628e5af02b1b986d8d1104e09e2ab72127a08f834d129a7c1e7f344102eb"
+    },
+    "journey.json": {
+      "bytes": 1487,
+      "sha256": "ddfb1263e121d3bdc489846c496072a51b639ddc2f319cb5a317093466f3d6e2"
+    },
+    "motion-mobile.png": {
+      "bytes": 45294,
+      "sha256": "0908fbf4ae5c37d8554194c8514b829e909515d2f5aab6edbf9022b1cca0491b"
+    },
+    "motion-mobile.svg": {
+      "bytes": 58368,
+      "sha256": "ccdf4cfec3d76bea258646469fdbbf65c3f22ef02af5a1df34dad7e51b3bab41"
+    },
+    "motion.png": {
+      "bytes": 58450,
+      "sha256": "81c405c017bc3bdd4dc6273634430a4609a260e656ed0f6e295eef37863dcd4c"
+    },
+    "motion.svg": {
+      "bytes": 58630,
+      "sha256": "c5a0661de6e7b6fb58083127118619cf57d3ab162a5fa06402fa30df7265edd4"
+    },
+    "studio-desktop.png": {
+      "bytes": 106482,
+      "sha256": "e099aaa4fbfea916c08d49bda20913cbc5481d8b98b67f5fe05b53e085c03f66"
+    },
+    "studio-mobile.png": {
+      "bytes": 41705,
+      "sha256": "bbc26568dd4bd93742cddd6b58efac6784a132befd8f5e9674f4f7e92b49ef75"
+    }
+  },
+  "portable_zip_members": {
+    "LICENSE.txt": "ab0ce13cd5b12cd01185876ef0c286fedd048342b6460f36bc4e9c7ee21d999a",
+    "NOTO-LICENSE.txt": "e38218c6a118e0408a0c9ae8e88fddf6d483a9c592e1a91bfcd9f5fa7ccceec0",
+    "README.txt": "78ec475605118da16aca8e20127953d2512f0835213e4f898f980cef0412930d",
+    "authoring.mjs": "9023ef0957e538806efec4c0a8d258c3576f8ee96b4fb32dce99df5483a8f421",
+    "geometry.mjs": "b4d5fa42b7ffc5163a5ac0eae0fa6afb0b74b5c60548a5d2926435eb05b7c64d",
+    "index.html": "71dc6fa93a5dfa898f5819c2ac15c826b8f75b89b45254f6bbba18eeefaa6eef",
+    "plan.json": "6555b6b470e88f7fa02cd2d4c92b80fe810d0bcc0fcd3ca312ee8880717f0b54",
+    "polynomial.mjs": "7d9744ae5b781491e1d5371fa8f62e879a6e153bceb77c9e245f0f4b51c394b6",
+    "scene.json": "4fdfac9fbc8ca60f44523f1db39b216f020d5bca8c3a55fa2c4b9dd1c0e920a5",
+    "studio.css": "9760f87f6e857143168b5793223532be5772a770f8a56ce6080cf7ee01a0263a",
+    "studio.mjs": "1a18cedd4b6b972824316c296e0b1d28b38ff2f67217029c599be5b5b8cbe5a5",
+    "verification.json": "ad586fb23511a4e865c2f852900483632b3947f9f191e45d358105c92974cb17"
+  }
+}
