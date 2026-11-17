@@ -6,13 +6,16 @@ Labels collide between keyframes. Portrait crops erase important points. Kinetyl
 
 [Open the studio](https://nazeeh111.github.io/Kinetyl/) · [Download](https://github.com/nazeeh111/Kinetyl/releases) · [Scene format](SCHEMAS.md)
 
-[![The Kinetyl motion studio compares overlapping labels with the compiled placement at 3.00 seconds](docs/images/studio-current.png)](https://nazeeh111.github.io/Kinetyl/)
+<picture>
+  <source media="(max-width: 600px)" srcset="docs/presentation/motion-mobile.png">
+  <img src="docs/presentation/motion.png" alt="Actual edited cubic motion at 3 seconds, drawn at a common uniform scale. Before placement, Alpha and Beta's measured label envelopes overlap. Compiled offsets separate the labels while retaining the same world curves and time. Cropped declared geometry, not native pixels.">
+</picture>
 
-[Watch the earlier studio walkthrough (16 seconds)](https://nazeeh111.github.io/Kinetyl/launch.mp4) · [Film sources and scope](docs/launch-film.md).
+**Edit the motion deliberately. Compile the presentation without moving it again.** In an actual studio journey, Alpha's first control y changed from `2` to `3/2`. Undo and Redo retained the exact source. Compilation then separated the labels; changing to 9:16 retained the edited paths, timing and measured geometry. The exported plan reopened in a fresh browser.
 
-[Current capture provenance](docs/images/current-capture.json). The first view uses the bundled, independently checked curved-crossing plan. The two browser drawings show the same source paths and time, with the labels in their before and compiled positions. They represent declared geometry; native video validation is separate.
+The drawing shows one moment, not the proof. The verifier checks the full supported 0–6 s interval using rational geometry. [Reopen the portable studio](docs/presentation/edited-studio.zip) · [Inspect the exact edit and limits](docs/presentation/README.md) · [Wide plan](docs/presentation/edited-wide.plan.json) · [Portrait plan](docs/presentation/edited-portrait.plan.json).
 
-At **3.00 s**, compare **Before / Compiled**, then switch to **9:16**. The curved paths and event times stay fixed while label placement and camera framing change. [Curved-motion guide](docs/curved-motion.md). Actual native exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4).
+[Current studio capture](docs/images/studio-current.png) and its [provenance](docs/images/current-capture.json) remain separate. Earlier actual native exports: [wide](docs/native/curved-wide.mp4) and [portrait](docs/native/curved-portrait.mp4). This new journey did not rerender native video. [Curved-motion guide](docs/curved-motion.md) · [Earlier walkthrough and scope](docs/launch-film.md).
 
 ## Use it
 

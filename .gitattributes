@@ -8,3 +8,7 @@ docs/geometry.mjs linguist-generated=true
 docs/studio.mjs linguist-generated=true
 docs/studio.css linguist-generated=true
 docs/index.html linguist-generated=true
+
+# Exact presentation exports and source-derived vectors.
+docs/presentation/*.json -text
+docs/presentation/*.svg -text
