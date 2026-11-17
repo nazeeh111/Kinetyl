@@ -14,6 +14,7 @@ import zlib
 
 from . import core
 from .io import _pairs, bundle, data
+from .exporter import export
 
 MAX_JSON = 4 * 1024 * 1024
 MAX_MOVIE = 256 * 1024 * 1024
@@ -148,7 +149,6 @@ def compose(intent_path, output, *, reuse=None, render=False, work_budget=250000
         plan = core.compile_scene(scene, work_budget=work_budget)
     update('Independently verifying plan')
     verification = core.verify_plan(plan)
-    from .cli import export
     with tempfile.TemporaryDirectory(prefix='.kinetyl-compose-', dir=output.parent) as directory:
         root = Path(directory)
         update('Exporting portable studio')

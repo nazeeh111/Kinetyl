@@ -67,7 +67,7 @@ class BuildTests(unittest.TestCase):
 
     def test_stage_failures_no_partial_no_clobber_and_retry(self):
         first=self.root/'first';compose(self.source,first);before=(first/'plan.json').read_bytes()
-        for name,target in [('measure','kinetyl.manimgx_adapter.measure_scene'),('compile','kinetyl.core.compile_scene'),('export','kinetyl.cli.export'),('render','kinetyl.manimgx_adapter.render_plan')]:
+        for name,target in [('measure','kinetyl.manimgx_adapter.measure_scene'),('compile','kinetyl.core.compile_scene'),('export','kinetyl.exporter.bundle'),('render','kinetyl.manimgx_adapter.render_plan')]:
             out=self.root/name
             with patch(target,side_effect=ValueError('injected '+name)):
                 with self.assertRaisesRegex(ValueError,'injected'):compose(self.source,out,render=name=='render')
